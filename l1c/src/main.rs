@@ -50,6 +50,24 @@ struct Function {
     inst: Vec<String>,
 }
 
+enum FuncExpect {
+    Label,
+    NumArg,
+    NumSpl,
+    Ins,
+}
+
+impl FuncExpect {
+    fn next(&mut self) {
+        match *self {
+            FuncExpect::Label  => *self = FuncExpect::NumArg,
+            FuncExpect::NumArg => *self = FuncExpect::NumSpl,
+            FuncExpect::NumSpl => *self = FuncExpect::Ins,
+            FuncExpect::Ins    => *self = FuncExpect::Ins,
+        }
+    }
+}
+
 fn main() {
     // argument validation check
     if env::args().count() != 2 {
@@ -110,7 +128,7 @@ fn main() {
     regexs.insert("ARER", Regex::new(r"^\(\s*call\s+array-error\s+2\s*\)$").unwrap());
 
     //l1_parser(codes);
-    if let Err(e) = l1_function_parser(codes) {
+    if let Err(e) = l1_function_parser(codes, &regexs) {
         println!("{}", e);
     }
 }
@@ -118,86 +136,107 @@ fn main() {
 fn l1_parser(codes: Chars) {
 }
 
-fn l1_function_parser(mut codes: Chars) -> Result<(), String> {
-    // skip all whitespaces until find a '('
-    while let Some(c) = codes.next() {
-        if c.is_whitespace() {
-            continue;
-        } else if c != '(' {
-            return Err("[Syntax Error] Program Start With Non-Parenthesis Character".to_string());
-        } else {
-            break;
+fn l1_program_parser(codes: Chars, regexs: &HashMap<&str, Regex>) -> Result<(), String> {
+    return Ok(());
+}
+
+fn l1_function_parser(mut codes: Chars, regexs: &HashMap<&str, Regex>) -> Result<(), String> {
+    let mut status = FuncExpect::Label;
+    'outer: loop {
+        match status {
+            FuncExpect::Label => {
+                let mut label = String::new();
+                while let Some(c) = codes.next() {
+                    if c.is_whitespace() {
+                        continue;
+                    } else if c == ':' {
+                        break;
+                    } else {
+                        return Err("[Syntax Error] Program Start With Non-Parenthesis Character".to_string());
+                    }
+                }
+                while let Some(c) = codes.next() {
+                    if c.is_whitespace() {
+                        break;
+                    } else {
+                        label.push(c);
+                    }
+                }
+                println!("[l1_function_parser] Label: {}", label);
+                status.next();
+            }
+            FuncExpect::NumArg | FuncExpect::NumSpl => {
+                let mut number = String::new();
+                while let Some(c) = codes.next() {
+                    if c.is_whitespace() {
+                        continue;
+                    } else if c.is_numeric() {
+                        number.push(c);
+                        break;
+                    } else {
+                        return Err("[Syntax Error] Numbers Are Expected".to_string());
+                    }
+                }
+                while let Some(c) = codes.next() {
+                    if c.is_whitespace() {
+                        break;
+                    } else if c.is_numeric() {
+                        number.push(c);
+                    } else {
+                        return Err("[Syntax Error] Numbers Are Expected".to_string());
+                    }
+                }
+                println!("[l1_function_parser] Number: {}", number);
+                status.next();
+            }
+            FuncExpect::Ins => {
+                let mut ins = String::new();
+                let mut i = 0;
+                while let Some(c) = codes.next() {
+                    if c.is_whitespace() {
+                        continue;
+                    } else if c == '(' {
+                        ins.push(c);
+                        i = 1;
+                        break;
+                    } else if c == ')' {
+                        break 'outer;
+                    } else if c == ':' {
+                        ins.push(c);
+                        break;
+                    } else {
+                        return Err("[Syntax Error] Instructions Are Expected".to_string());
+                    }
+                }
+                while let Some(c) = codes.next() {
+                    if i == 0 {
+                        if c.is_whitespace() {
+                            break;
+                        } else {
+                            ins.push(c);
+                        }
+                    } else {
+                        ins.push(c);
+                        if c == '(' {
+                            i += 1;
+                            if i == 3 {
+                                return Err("[Syntax Error] Nested Instruction Are Not Allowed".to_string());
+                            }
+                        } else if c == ')' && i == 1 {
+                            break;
+                        } else if c == ')' {
+                            i -= 1;
+                        } else {
+                            //return Err("[Syntax Error] Instructions Are Expected".to_string());
+                        }
+                    }
+                }
+                //println!("[l1_function_parser] Instruction: {}", ins);
+                l1_instruction_parser(&ins, regexs);
+            }
         }
     }
 
-    // extract the label
-    let mut label = String::new();
-    while let Some(c) = codes.next() {
-        if c.is_whitespace() {
-            continue;
-        } else if c != ':' {
-            return Err("[Syntax Error] Program Label Is Expected".to_string());
-        } else {
-            //label.push(c);
-            break;
-        }
-    }
-    while let Some(c) = codes.next() {
-        if !c.is_whitespace() {
-            label.push(c);
-        } else {
-            break;
-        }
-    }
-    println!("[l1_function_parser] Label: {}", label);
-
-    // extract the number of arguments
-    let mut narg = String::new();
-    while let Some(c) = codes.next() {
-        if c.is_whitespace() {
-            continue;
-        } else if c.is_numeric() {
-            narg.push(c);
-            break;
-        } else {
-            return Err("[Syntax Error] Number of Arguments Is Expected".to_string());
-        }
-    }
-    while let Some(c) = codes.next() {
-        if c.is_whitespace() {
-            break;
-        } else if c.is_numeric() {
-            narg.push(c);
-        } else {
-            return Err("[Syntax Error] Number of Arguments Is Expected".to_string());
-        }
-    }
-    println!("[l1_function_parser] Number of Arguments: {}", narg);
-
-    // extract the space needed
-    let mut nspl = String::new();
-    while let Some(c) = codes.next() {
-        if c.is_whitespace() {
-            continue;
-        } else if c.is_numeric() {
-            nspl.push(c);
-            break;
-        } else {
-            return Err("[Syntax Error] Number of Space Is Expected".to_string());
-        }
-    }
-    while let Some(c) = codes.next() {
-        if c.is_whitespace() {
-            break;
-        } else if c.is_numeric() {
-            nspl.push(c);
-        } else {
-            return Err("[Syntax Error] Number of Space Is Expected".to_string());
-        }
-    }
-    println!("[l1_function_parser] Space of Spill: {}", nspl);
-
-    // extract instructions
 
     return Ok(());
 }
@@ -210,27 +249,27 @@ fn l1_instruction_parser(ins: &str, regexs: &HashMap<&str, Regex>) -> Instructio
     } else if regexs["MVRR"].is_match(ins) {
         println!("find Mvrr instruction: {}", ins);
     } else if regexs["AROP"].is_match(ins) {
-        println!("find Arop instruction");
+        println!("find Arop instruction: {}", ins);
     } else if regexs["SFOP"].is_match(ins) {
-        println!("find Sfop instruction");
+        println!("find Sfop instruction: {}", ins);
     } else if regexs["COMP"].is_match(ins) {
-        println!("find Comp instruction");
+        println!("find Comp instruction: {}", ins);
     } else if regexs["LABL"].is_match(ins) {
-        println!("find Label");
+        println!("find Label: {}", ins);
     } else if regexs["GOTO"].is_match(ins) {
-        println!("find Goto instruction");
+        println!("find Goto instruction: {}", ins);
     } else if regexs["CJMP"].is_match(ins) {
-        println!("find Cjmp instruction");
+        println!("find Cjmp instruction: {}", ins);
     } else if regexs["CALL"].is_match(ins) {
-        println!("find Call instruction");
+        println!("find Call instruction: {}", ins);
     } else if regexs["TCAL"].is_match(ins) {
-        println!("find Tcal instruction");
+        println!("find Tcal instruction: {}", ins);
     } else if regexs["RETN"].is_match(ins) {
-        println!("find Retn instruction");
+        println!("find Retn instruction: {}", ins);
     } else if regexs["PRIT"].is_match(ins) {
-        println!("find Prit instruction");
+        println!("find Prit instruction: {}", ins);
     } else if regexs["ALOC"].is_match(ins) {
-        println!("find Aloc instruction");
+        println!("find Aloc instruction: {}", ins);
     } else if regexs["ARER"].is_match(ins) {
         println!("find Arer instruction: {}", ins);
     } else {
