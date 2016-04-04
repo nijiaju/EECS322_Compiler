@@ -158,42 +158,46 @@ fn main() {
     let mut codes = codes.chars();
 
     // prepare the regular expressions used by parser
-    // a ::= (rdi|rsi|rdx|sx|r8|r9)
-    // w ::= (rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15)
-    // x ::= (rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp)
-    // s ::= (rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+|:[a-zA-Z_][a-zA-Z_0-9]*)
-    // t ::= (rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+)
-    // u ::= (rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|:[a-zA-Z_][a-zA-Z_0-9]*)
+    // a ::= (rdi|rsi|rdx|rcx|r8|r9)
+    // w ::= (rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15)
+    // x ::= (rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp)
+    // s ::= (rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+|:[a-zA-Z_][a-zA-Z_0-9]*)
+    // t ::= (rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+)
+    // u ::= (rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|:[a-zA-Z_][a-zA-Z_0-9]*)
     // sx::= rcx
     let mut regexs = HashMap::new();
     regexs.insert("MVRR",
-    Regex::new(r"^\(\s*(rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15)\s+<-\s+(rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+|:[a-zA-Z_][a-zA-Z_0-9]*)\s*\)$").unwrap());
+    Regex::new(r"^\(\s*(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15)\s+<-\s+(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+|:[a-zA-Z_][a-zA-Z_0-9]*)\s*\)$").unwrap());
     regexs.insert("MVMR",
-    Regex::new(r"^\(\s*(rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15)\s+<-\s+\(\s*mem\s+(rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp)\s+-?[0-9]+\s*\)\s*\)$").unwrap());
+    Regex::new(r"^\(\s*(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15)\s+<-\s+\(\s*mem\s+(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp)\s+-?[0-9]+\s*\)\s*\)$").unwrap());
     regexs.insert("MVRM",
-    Regex::new(r"^\(\s*\(\s*mem\s+(rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp)\s+-?[0-9]+\s*\)\s+<-\s+(rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+|:[a-zA-Z_][a-zA-Z_0-9]*)\s*\)$").unwrap());
+    Regex::new(r"^\(\s*\(\s*mem\s+(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp)\s+-?[0-9]+\s*\)\s+<-\s+(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+|:[a-zA-Z_][a-zA-Z_0-9]*)\s*\)$").unwrap());
     regexs.insert("AROP", 
-    Regex::new(r"^\(\s*(rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15)\s+(\+=|-=|\*=|&=)\s+(rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+)\s*\)$").unwrap());
+    Regex::new(r"^\(\s*(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15)\s+(\+=|-=|\*=|&=)\s+(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+)\s*\)$").unwrap());
     regexs.insert("SFOP", 
-    Regex::new(r"^\(\s*(rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15)\s+(<<=|>>=)\s+(rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+|:[a-zA-Z_][a-zA-Z_0-9]*)\s*\)$").unwrap());
+    Regex::new(r"^\(\s*(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15)\s+(<<=|>>=)\s+(rcx|-?[0-9]+)$").unwrap());
     regexs.insert("COMP",
-    Regex::new(r"^\(\s*(rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15)\s+<-\s+(rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+)\s+(<|<=|=)\s+(rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+)\s*\)$").unwrap());
+    Regex::new(r"^\(\s*(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15)\s+<-\s+(rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+)\s+(<|<=|=)\s+(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+)\s*\)$").unwrap());
     regexs.insert("LABL",
     Regex::new(r"^\s*:[a-zA-Z_][a-zA-Z_0-9]*\s*$").unwrap());
     regexs.insert("GOTO",
     Regex::new(r"^\(\s*goto\s+:[a-zA-Z_][a-zA-Z_0-9]*\s*\)$").unwrap());
     regexs.insert("CJMP",
-    Regex::new(r"^\(\s*cjump\s+(rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+)\s+(<|<=|=)\s+(rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+)\s+:[a-zA-Z_][a-zA-Z_0-9]*\s+:[a-zA-Z_][a-zA-Z_0-9]*\s*\)$").unwrap());
+    Regex::new(r"^\(\s*cjump\s+(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+)\s+(<|<=|=)\s+(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+)\s+:[a-zA-Z_][a-zA-Z_0-9]*\s+:[a-zA-Z_][a-zA-Z_0-9]*\s*\)$").unwrap());
     regexs.insert("CALL",
-    Regex::new(r"^\(\s*call\s+(rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|:[a-zA-Z_][a-zA-Z_0-9]*)\s+[0-9]+\s*\)$").unwrap());
+    Regex::new(r"^\(\s*call\s+(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|:[a-zA-Z_][a-zA-Z_0-9]*)\s+[0-9]+\s*\)$").unwrap());
     regexs.insert("TCAL",
-    Regex::new(r"^\(\s*tail-call\s+(rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|:[a-zA-Z_][a-zA-Z_0-9]*)\s+[0-6]\s*\)$").unwrap());
+    Regex::new(r"^\(\s*tail-call\s+(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|:[a-zA-Z_][a-zA-Z_0-9]*)\s+[0-6]\s*\)$").unwrap());
     regexs.insert("RETN", Regex::new(r"^\(\s*return\s*\)$").unwrap());
     regexs.insert("PRIT", Regex::new(r"^\(\s*call\s+print\s+1\s*\)$").unwrap());
     regexs.insert("ALOC", Regex::new(r"^\(\s*call\s+allocate\s+2\s*\)$").unwrap());
     regexs.insert("ARER", Regex::new(r"^\(\s*call\s+array-error\s+2\s*\)$").unwrap());
 
     let parse_result = l1_parser(&mut codes, &regexs);
+    if let Err(e) = parse_result {
+        println!("{}", e);
+        return;
+    }
     generate_code(&(parse_result.unwrap()));
 
 }
@@ -637,11 +641,21 @@ fn instruction_to_x86 (ins: Instruction, num_arg: u64, num_spl: u64) -> String {
             return format!("subq ${}, %rsp\njmp {}\n", offset, format_lab(&dst))
         },
         Instruction::Retn => {
-            let offset = (num_arg - 6) * 8 + num_spl * 8;
+            let offset: u64;
+            if num_arg <= 6 {
+                offset = num_spl * 8;
+            } else {
+                offset = (num_arg - 6) * 8 + num_spl * 8;
+            }
             return format!("addq ${}, %rsp\nret\n", offset)
         },
         Instruction::Tcal { dst, arg } => {
-            let offset = (num_arg - 6) * 8 + num_spl * 8;
+            let offset: u64;
+            if num_arg <= 6 {
+                offset = num_spl * 8;
+            } else {
+                offset = (num_arg - 6) * 8 + num_spl * 8;
+            }
             return format!("addq ${}, %rsp\njmp {}\n", offset, format_lab(&dst))
         },
         Instruction::Prit => 
