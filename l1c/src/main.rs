@@ -479,8 +479,8 @@ fn generate_code (p: & Program) -> Result<(), String> {
     let mut f = File::create("prog.S").unwrap();
     f.write(b".text\n.global go\ngo:\n");
     f.write(b"pushq %rbx\npushq %rbp\npushq %r12\npushq %r13\npushq %r14\npushq %r15\n");
-
     f.write_fmt(format_args!("call {}\n", format_lab(&p.labl)));
+    f.write(b"popq %r15\npopq %r14\npopq %r13\npopq %r12\npopq %rbp\npopq %rbx\nretq\n");
 
     for func in &p.func {
         f.write_fmt(format_args!("{}:\n", format_lab(&func.labl)));
@@ -492,7 +492,7 @@ fn generate_code (p: & Program) -> Result<(), String> {
         }
     }
 
-    f.write(b"popq %r15\npopq %r14\npopq %r13\npopq %r12\npopq %rbp\npopq %rbx\nretq\n");
+    //f.write(b"popq %r15\npopq %r14\npopq %r13\npopq %r12\npopq %rbp\npopq %rbx\nretq\n");
     return Ok(());
 }
 
