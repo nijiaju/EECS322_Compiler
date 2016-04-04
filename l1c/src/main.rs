@@ -175,7 +175,7 @@ fn main() {
     regexs.insert("AROP", 
     Regex::new(r"^\(\s*(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15)\s+(\+=|-=|\*=|&=)\s+(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+)\s*\)$").unwrap());
     regexs.insert("SFOP", 
-    Regex::new(r"^\(\s*(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15)\s+(<<=|>>=)\s+(rcx|-?[0-9]+)$").unwrap());
+    Regex::new(r"^\(\s*(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15)\s+(<<=|>>=)\s+(rcx|-?[0-9]+)\s*\)$").unwrap());
     regexs.insert("COMP",
     Regex::new(r"^\(\s*(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15)\s+<-\s+(rdi|rsi|rdx|sx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+)\s+(<|<=|=)\s+(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|-?[0-9]+)\s*\)$").unwrap());
     regexs.insert("LABL",
@@ -193,6 +193,9 @@ fn main() {
     regexs.insert("ALOC", Regex::new(r"^\(\s*call\s+allocate\s+2\s*\)$").unwrap());
     regexs.insert("ARER", Regex::new(r"^\(\s*call\s+array-error\s+2\s*\)$").unwrap());
 
+    let preprocess_result = l1_preprocesser(&mut codes);
+    println!("{}", preprocess_result);
+    let mut codes = preprocess_result.chars();
     let parse_result = l1_parser(&mut codes, &regexs);
     if let Err(e) = parse_result {
         println!("{}", e);
@@ -201,6 +204,24 @@ fn main() {
     generate_code(&(parse_result.unwrap()));
 
 }
+
+fn l1_preprocesser(codes: &mut Chars) -> String {
+    let mut result = String::new();
+    let mut comment_flag = false;
+    while let Some(c) = codes.next() {
+        if c == ';' {
+            comment_flag = true;
+        } else if c == '\n' {
+            comment_flag = false;
+        }  
+
+        if comment_flag == false {
+            result.push(c);
+        }
+    }
+    return result;
+}
+
 
 fn l1_parser(codes: &mut Chars, regexs: &HashMap<&str, Regex>) -> Result<Program, String> {
     while let Some(c) = codes.next() {
