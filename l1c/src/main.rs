@@ -684,7 +684,7 @@ fn instruction_to_x86 (ins: Instruction, num_arg: u64, num_spl: u64) -> String {
         Instruction::Aloc =>
             return format!("call allocate\n"),
         Instruction::Arer =>
-            return format!("call array-error\n"),
+            return format!("call array_error\n"),
     };
 }
 
