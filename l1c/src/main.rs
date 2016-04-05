@@ -692,10 +692,12 @@ fn format_op(op: &str) -> String {
     let c = op.chars().next().unwrap();
     if c == ':' {
         return "$_".to_string() + &op[1..];
-    } else if c.is_numeric() {
-        return "$".to_string() + op;
     } else {
-        return "%".to_string() + op;
+        if let Ok(_) = op.parse::<i64>() {
+            return "$".to_string() + op;
+        } else {
+            return "%".to_string() + op;
+        }
     }
 }
 
@@ -703,10 +705,12 @@ fn format_lab(op: &str) -> String {
     let c = op.chars().next().unwrap();
     if c == ':' {
         return "_".to_string() + &op[1..];
-    } else if c.is_numeric() {
-        return "$".to_string() + op;
     } else {
-        return "%".to_string() + op;
+        if let Ok(_) = op.parse::<i64>() {
+            return "$".to_string() + op;
+        } else {
+            return "%".to_string() + op;
+        }
     }
 }
 
