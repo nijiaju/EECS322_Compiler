@@ -14,20 +14,6 @@ enum Instruction {
 }
 
 #[derive(Debug)]
-enum Operation {
-    Add,
-    Sub,
-    Mul,
-    And,
-    Assign,
-    ShiftLeft,
-    ShiftRight,
-    Less,
-    LessEqual,
-    Equal,
-}
-
-#[derive(Debug)]
 enum Anything<'a> {
     Instruction(Instruction),
     RawWord(&'a str),
@@ -91,7 +77,10 @@ fn l1_instruction_parser(word_iter: &mut SplitWhitespace) -> Result<Instruction,
     match words.len() {
         3 => {
             match (&words[0], &words[1], &words[2]) {
-                (_, &Anything::RawWord("<-"), _) => println!("this is a match 3"),
+                (&Anything::RawWord(d), &Anything::RawWord("<-"), &Anything::RawWord(s)) =>
+                    Instruction::Mvrr( dest: d, sorc: s ),
+                (&Anything::RawWord(d), &Angthing::RawWord("<-"), &Anything::Instruction(ins)) =>
+                    Instruction::Mv
                 _ => {}
             }
         }
