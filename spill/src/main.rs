@@ -5,22 +5,21 @@ use std::io::{Read, Write};
 use std::env;
 use std::str::{Chars, SplitWhitespace};
 use regex::Regex;
+use std::marker::Send;
 
 #[derive(Debug)]
-enum Instruction {
-    Load { regs: String, offs: String },
-    Mvrr { dest: String, sorc: String },
-    Mvmr { dest: String, load: Box<Instruction> },
+#[derive(Clone)]
+enum Instruction<'a> {
+    Load { regs: &'a str, offs: &'a str },
+    Mvrr { dest: &'a str, sorc: &'a str },
+    Mvmr { dest: &'a str, load: Box<Instruction<'a>> },
 }
 
 #[derive(Debug)]
 enum Anything<'a> {
-    Instruction(Instruction),
+    Instruction(Instruction<'a>),
     RawWord(&'a str),
 }
-
-// nightly rust feature
-// const fn label_regex: Regex = Regex::new(r"^:[a-zA-Z_][a-zA-Z_0-9]*$").unwrap();
 
 fn main() {
      // argument validation check
@@ -55,10 +54,9 @@ fn main() {
     }
 
     println!("{:?}", result);
-    
 }
 
-fn l1_instruction_parser(word_iter: &mut SplitWhitespace) -> Result<Instruction, String> {
+fn l1_instruction_parser<'a> (word_iter: &mut SplitWhitespace) -> Result<Instruction<'a>, String> {
     let mut words = Vec::new();
     while let Some(word) = word_iter.next() {
         println!("l1 ins parser: {}", word);
@@ -77,10 +75,12 @@ fn l1_instruction_parser(word_iter: &mut SplitWhitespace) -> Result<Instruction,
     match words.len() {
         3 => {
             match (&words[0], &words[1], &words[2]) {
+                (&Anything::RawWord("mem"), &Anything::RawWord(r), &Anything::RawWord(o)) =>
+                    return Ok(Instruction::Load{regs: r, offs: o}),
                 (&Anything::RawWord(d), &Anything::RawWord("<-"), &Anything::RawWord(s)) =>
-                    Instruction::Mvrr( dest: d, sorc: s ),
-                (&Anything::RawWord(d), &Angthing::RawWord("<-"), &Anything::Instruction(ins)) =>
-                    Instruction::Mv
+                    return Ok(Instruction::Mvrr{dest: d, sorc: s}),
+                (&Anything::RawWord(d), &Anything::RawWord("<-"), &Anything::Instruction(ref ins)) =>
+                    return Ok(Instruction::Mvmr{dest: d, load: Box::new((*ins).clone())}),
                 _ => {}
             }
         }

@@ -2,3 +2,6 @@
 name = "l1c_"
 version = "0.1.0"
 authors = ["jiajuni"]
+
+[dependencies]
+regex = "0.1"
