@@ -410,15 +410,17 @@
     [leeq () "<="]
     [eqal () "="]))
 
+(require racket/cmdline)
+(define file-to-compile
+  (command-line
+   #:args (filename)
+   filename))
+
 ;========== MAIN ==========
 
-(define in (open-input-file "spill-test/assign_1.L2f"))
+(define in (open-input-file file-to-compile))
 (define l2function (parsef (read in)))
 ;(println l2function)
-(define var (read in))
-(println var)
-(define prefix (read in))
-(println prefix)
-(define result (spill-func l2function var prefix))
+(define result (spill-func l2function (read in) (read in)))
 ;(println result)
 (print-func result)
