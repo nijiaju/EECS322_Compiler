@@ -3,11 +3,11 @@
 ;========== TYPE DEFINITION ==========
 
 (define-type Prog
-  [prog (name islabel?)
+  [prog (name string?)
         (funs (listof Func?))])
 
 (define-type Func
-  [func (name islabel?)
+  [func (name string?)
         (narg number?)
         (nspl number?)
         (inss (listof Inst?))])
@@ -15,7 +15,7 @@
 (define-type Inst
   [numbr (numb number?)]
   [regst (regs symbol?)]
-  [label (labl symbol?)]
+  [label (labl string?)]
   [varia (vari symbol?)]
   [loadi (sorc Inst?) (offs number?)]
   [stack (stak number?)]
@@ -51,12 +51,12 @@
 
 (define (parsep sexp)
   (match sexp
-    [`(,e1 ,e2 ...) (prog e1 (map parsef e2))]
+    [`(,e1 ,e2 ...) (prog (substring (symbol->string e1) 1) (map parsef e2))]
     [_ (error 'parsep "syntax error")]))
 
 (define (parsef sexp)
   (match sexp
-    [`(,e1 ,e2 ,e3 ,e4 ...) (func e1 e2 e3 (map parsei e4))]
+    [`(,e1 ,e2 ,e3 ,e4 ...) (func (substring (symbol->string e1) 1) e2 e3 (map parsei e4))]
     [_ (error 'parsef "syntax error")]))
 
 (define (parsei sexp)
@@ -84,7 +84,7 @@
     [`(tail-call ,e1 ,e2)        (tcall (parsei e1) e2)]
     [`(return)                   (retun)]
     [(? number?)                 (numbr sexp)]
-    [(? islabel?)                (label sexp)]
+    [(? islabel?)                (label (substring (symbol->string sexp) 1))]
     [(? isregister?)             (regst sexp)]
     [(? isvariable?)             (varia sexp)]
     [_                           (error 'parsei "syntax error")]))
@@ -105,14 +105,78 @@
     [_ #f]))
 
 ;========== SPILL ==========
+(define/contract (new-var p n)
+  (-> symbol? number? Inst?)
+  (varia (string->symbol
+          (string-append
+           (symbol->string p)
+           (number->string n)))))
 
-;(define sorce_code (call-with-input-file "test" read))
+(define/contract (adjust-assign ins-list type)
+  (-> (listof Inst?) symbol? (listof Inst?))
+  (cond
+    [(cons? (rest ins-list))
+     (cons (first ins-list (adjust-assign (rest ins-list) type)))]
+    [(empty? (rest ins-list))
+     (cond
+       [(eq? type 'mem-mem)
+    
+
+(define/contract (spill-func f v p)
+  (-> Func? symbol? symbol? Func?)
+  (let ([counter (box 0)])
+    (type-case Func f
+      [func (name narg nspl inss)
+            (func name narg (+ nspl 1)
+                  (foldl
+                   (λ (i res) (append res (spill i nspl counter v p)))
+                   empty
+                   inss))])))
+                  
+
+(define/contract (spill i n c v p)
+  (-> Inst? number? box? symbol? symbol? (listof Inst?))
+  (type-case Inst i
+    [numbr (numb) (list i)]
+    [regst (regs) (list i)]
+    [label (labl) (list i)]
+    [varia (vari)
+           (cond
+             [(eq? vari v) (list (new-var p (unbox c)))]
+             [else (list i)])]
+    [loadi (sorc offs)
+           (type-case Inst sorc
+             [varia (vars)
+                    (cond
+                      [(eq? vars v)
+                       (let ([count (begin0 (unbox c) (set-box! c (+ (unbox c) 1)))])
+                         (list (movei (new-var p count) (loadi (regst 'rsp) (* n 8)))
+                               (loadi (new-var p count) offs)))]
+                      [else (list i)])]
+             [else (list i)])]
+    [movei (dest sorc)
+           (type-case Inst dest
+             [varia (vard)
+                    (cond
+                      [(eq? vard v)
+                       (type-case Inst sorc
+                         [varia (vars)
+                                (cond
+                                  [(eq? vars v) empty]
+                                  [else (list
+                                         (movei (loadi (regst 'rsp) (* n 8)) (varia vars)))])]
+                         [loadi (lsrc loff)
+                                
+                         [else (error 'spill "syntax error ~a" i)])]
+                      [else (error 'spill "syntax error ~a" i)])]
+             [else (error 'spill "syntax error ~a" i)])]
+    [else         (error 'spill "syntax error ~a" i)]))
+
 (define in (open-input-file "test"))
-(define sorce_code (parsef (read in)))
-(println sorce_code)
-(println (read in))
-(println (read in))
-;(println (read "test"))
-;(println (parsep sorce_code))
-
-
+(define l2function (parsef (read in)))
+(println l2function)
+(define var (read in))
+(println var)
+(define prefix (read in))
+(println prefix)
+(println (spill-func l2function var prefix))
