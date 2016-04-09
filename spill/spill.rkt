@@ -105,6 +105,7 @@
     [_ #f]))
 
 ;========== SPILL ==========
+
 (define/contract (new-var p n)
   (-> symbol? number? Inst?)
   (varia (string->symbol
@@ -112,15 +113,35 @@
            (symbol->string p)
            (number->string n)))))
 
-(define/contract (adjust-assign ins-list type)
-  (-> (listof Inst?) symbol? (listof Inst?))
+(define/contract (spill-assign ins-list var n ins-type)
+  (-> (listof Inst?) Inst? number? symbol? (listof Inst?))
   (cond
     [(cons? (rest ins-list))
-     (cons (first ins-list (adjust-assign (rest ins-list) type)))]
+     (cons (first ins-list) (spill-assign (rest ins-list) var n ins-type))]
     [(empty? (rest ins-list))
      (cond
-       [(eq? type 'mem-mem)
-    
+       [(eq? ins-type 'memsorc+spldest)
+        (type-case Inst (first ins-list)
+          [loadi (lsrc loff)
+                 (list (movei var (first ins-list))
+                       (movei (loadi (regst 'rsp) (* n 8)) var))]
+          [else (error 'spill "syntax error ~a" (first ins-list))])]
+       [(eq? ins-type 'memsorc)
+        (type-case Inst (first ins-list)
+          [loadi (lsrc loff)
+                 (list (movei var (first ins-list)))]
+          [else (error 'spill "syntax error ~a" (first ins-list))])]
+       [(eq? ins-type 'splmemdest)
+        (type-case Inst (first ins-list)
+          [loadi (lsrc loff)
+                 (list (movei (first ins-list) var))]
+          [else (error 'spill "syntax error ~a" (first ins-list))])]
+       [(eq? ins-type 'memdest+splsorc)
+        (type-case Inst (first ins-list)
+          [loadi (lsrc loff)
+                 (list (movei var (loadi (regst 'rsp) (* n 8)))
+                       (movei (first ins-list) var))]
+          [else (error 'spill "syntax error ~a" (first ins-list))])])]))
 
 (define/contract (spill-func f v p)
   (-> Func? symbol? symbol? Func?)
@@ -132,7 +153,6 @@
                    (λ (i res) (append res (spill i nspl counter v p)))
                    empty
                    inss))])))
-                  
 
 (define/contract (spill i n c v p)
   (-> Inst? number? box? symbol? symbol? (listof Inst?))
@@ -149,9 +169,8 @@
              [varia (vars)
                     (cond
                       [(eq? vars v)
-                       (let ([count (begin0 (unbox c) (set-box! c (+ (unbox c) 1)))])
-                         (list (movei (new-var p count) (loadi (regst 'rsp) (* n 8)))
-                               (loadi (new-var p count) offs)))]
+                         (list (movei (new-var p (unbox c)) (loadi (regst 'rsp) (* n 8)))
+                               (loadi (new-var p (unbox c)) offs))]
                       [else (list i)])]
              [else (list i)])]
     [movei (dest sorc)
@@ -164,12 +183,69 @@
                                 (cond
                                   [(eq? vars v) empty]
                                   [else (list
-                                         (movei (loadi (regst 'rsp) (* n 8)) (varia vars)))])]
+                                         (movei (loadi (regst 'rsp) (* n 8)) sorc))])]
                          [loadi (lsrc loff)
-                                
-                         [else (error 'spill "syntax error ~a" i)])]
-                      [else (error 'spill "syntax error ~a" i)])]
+                                (begin0
+                                  (spill-assign (spill sorc n c v p) (new-var p (unbox c))
+                                                n 'memsorc+spldest)
+                                  (set-box! c (+ 1 (unbox c))))]
+                         [stack (offs)
+                                (begin0
+                                  (list (movei (new-var p (unbox c)) sorc)
+                                        (movei (loadi (regst 'rsp) (* n 8)) (new-var p (unbox c))))
+                                  (set-box! c (+ 1 (unbox c))))]
+                         [else (movei (loadi (regst 'rsp) (* n 8)) sorc)])]
+                      [else
+                       (type-case Inst sorc
+                         [varia (vars)
+                                (cond
+                                  [(eq? vars v) (list
+                                                 (movei dest (loadi (regst 'rsp) (* n 8))))]
+                                  [else (list i)])]
+                         [loadi (lsrc loff)
+                                (begin0
+                                  (spill-assign (spill sorc n c v p) dest n 'memsorc)
+                                  (when (and (varia? lsrc) (equal? lsrc (varia v)))
+                                    (set-box! c (+ 1 (unbox c)))))]
+                         [else (list i)])])]
+             [loadi (lsrc loff)
+                    (type-case Inst lsrc
+                      [varia (vars)
+                             (cond
+                               [(eq? vars v)
+                                (begin0
+                                  (spill-assign (spill dest n c v p) (first (spill sorc n c v p))
+                                                n 'splmemdest)
+                                  (set-box! c (+ 1 (unbox c))))]
+                               [else
+                                (if (and (varia? sorc) (equal? sorc (varia v)))
+                                    (begin0
+                                      (spill-assign (spill dest n c v p) (first (spill sorc n c v p))
+                                                    n 'memdest+splsorc)
+                                      (set-box! c (+ 1 (unbox c))))
+                                    (list i))])]
+                      [else
+                       (if (and (varia? sorc) (equal? sorc (varia v)))
+                           (begin0
+                             (spill-assign (spill dest n c v p) (first (spill sorc n c v p))
+                                           n 'memdest+splsorc)
+                             (set-box! c (+ 1 (unbox c))))
+                           (list i))])]
+             [regst (regs)
+                    (type-case Inst sorc
+                      [varia (vars)
+                             (cond
+                               [(eq? vars v) (list
+                                              (movei dest (loadi (regst 'rsp) (* n 8))))]
+                               [else (list i)])]
+                      [loadi (lsrc loff)
+                             (begin0
+                               (spill-assign (spill sorc n c v p) dest n 'memsorc)
+                               (when (and (varia? lsrc) (equal? lsrc (varia v)))
+                                 (set-box! c (+ 1 (unbox c)))))]
+                      [else (list i)])]
              [else (error 'spill "syntax error ~a" i)])]
+    
     [else         (error 'spill "syntax error ~a" i)]))
 
 (define in (open-input-file "test"))
