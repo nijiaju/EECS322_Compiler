@@ -143,6 +143,8 @@
                        (movei (first ins-list) var))]
           [else (error 'spill "syntax error ~a" (first ins-list))])])]))
 
+
+
 (define/contract (spill-func f v p)
   (-> Func? symbol? symbol? Func?)
   (let ([counter (box 0)])
@@ -245,14 +247,178 @@
                                  (set-box! c (+ 1 (unbox c)))))]
                       [else (list i)])]
              [else (error 'spill "syntax error ~a" i)])]
-    
-    [else         (error 'spill "syntax error ~a" i)]))
+    [aropi (oper dest sorc)
+           (type-case Inst dest
+             [varia (vard)
+                    (cond
+                      [(eq? vard v)
+                       (begin0
+                         (list (movei (first (spill dest n c v p)) (loadi (regst 'rsp) (* n 8)))
+                               (aropi oper (first (spill dest n c v p)) (first (spill sorc n c v p)))
+                               (movei (loadi (regst 'rsp) (* n 8)) (first (spill dest n c v p))))
+                         (set-box! c (+ 1 (unbox c))))]
+                      [else
+                       (type-case Inst sorc
+                         [varia (vars)
+                                (cond
+                                  [(eq? vars v)
+                                   (begin0
+                                     (list (movei (first (spill sorc n c v p)) (loadi (regst 'rsp) (* n 8)))
+                                           (aropi oper (first (spill dest n c v p)) (first (spill sorc n c v p))))
+                                     (set-box! c (+ 1 (unbox c))))]
+                                  [else (list i)])]
+                         [else (list i)])])]
+             [else
+              (type-case Inst sorc
+                [varia (vars)
+                        (cond
+                          [(eq? vars v)
+                           (begin0
+                             (list (movei (first (spill sorc n c v p)) (loadi (regst 'rsp) (* n 8)))
+                                   (aropi oper (first (spill dest n c v p)) (first (spill sorc n c v p))))
+                             (set-box! c (+ 1 (unbox c))))]
+                          [else (list i)])]
+                [else (list i)])])]
+    [sfopi (oper dest sorc)
+           (type-case Inst dest
+             [varia (vard)
+                    (cond
+                      [(eq? vard v)
+                       (begin0
+                         (list (movei (first (spill dest n c v p)) (loadi (regst 'rsp) (* n 8)))
+                               (sfopi oper (first (spill dest n c v p)) (first (spill sorc n c v p)))
+                               (movei (loadi (regst 'rsp) (* n 8)) (first (spill dest n c v p))))
+                         (set-box! c (+ 1 (unbox c))))]
+                      [else
+                       (type-case Inst sorc
+                         [varia (vars)
+                                (cond
+                                  [(eq? vars v)
+                                   (begin0
+                                     (list (movei (first (spill sorc n c v p)) (loadi (regst 'rsp) (* n 8)))
+                                           (sfopi oper (first (spill dest n c v p)) (first (spill sorc n c v p))))
+                                     (set-box! c (+ 1 (unbox c))))]
+                                  [else (list i)])]
+                         [else (list i)])])]
+             [else
+              (type-case Inst sorc
+                [varia (vars)
+                        (cond
+                          [(eq? vars v)
+                           (begin0
+                             (list (movei (first (spill sorc n c v p)) (loadi (regst 'rsp) (* n 8)))
+                                   (sfopi oper (first (spill dest n c v p)) (first (spill sorc n c v p))))
+                             (set-box! c (+ 1 (unbox c))))]
+                          [else (list i)])]
+                [else (list i)])])]
+    [compi (comp dest lhs rhs)
+           (type-case Inst dest
+             [varia (vard)
+                    (cond
+                      [(eq? vard v)
+                       (begin0
+                         (list (movei (first (spill dest n c v p)) (loadi (regst 'rsp) (* n 8)))
+                               (compi comp (first (spill dest n c v p))
+                                      (first (spill lhs n c v p)) (first (spill rhs n c v p)))
+                               (movei (loadi (regst 'rsp) (* n 8)) (first (spill dest n c v p))))
+                         (set-box! c (+ 1 (unbox c))))]
+                      [else
+                       (if (or (and (varia? lhs) (equal? lhs (varia v))) (and (varia? rhs) (equal? rhs (varia v))))
+                           (begin0
+                             (list (movei (new-var p (unbox c)) (loadi (regst 'rsp) (* n 8)))
+                                   (compi comp dest (first (spill lhs n c v p)) (first (spill rhs n c v p))))
+                             (set-box! c (+ 1 (unbox c))))
+                           (list i))])]
+             [else
+              (if (or (and (varia? lhs) (equal? lhs (varia v))) (and (varia? rhs) (equal? rhs (varia v))))
+                  (begin0
+                    (list (movei (new-var p (unbox c)) (loadi (regst 'rsp) (* n 8)))
+                          (compi comp dest (first (spill lhs n c v p)) (first (spill rhs n c v p))))
+                    (set-box! c (+ 1 (unbox c))))
+                  (list i))])]
+    [cjmpi (comp lhs rhs true fals)
+           (if (or (and (varia? lhs) (equal? lhs (varia v))) (and (varia? rhs) (equal? rhs (varia v))))
+               (begin0
+                 (list (movei (new-var p (unbox c)) (loadi (regst 'rsp) (* n 8)))
+                       (cjmpi comp (first (spill lhs n c v p)) (first (spill rhs n c v p)) true fals))
+                 (set-box! c (+ 1 (unbox c))))
+               (list i))]
+    [calli (dest narg)
+           (if (and (varia? dest) (equal? dest (varia v)))
+               (begin0
+                 (list (movei (first (spill dest n c v p)) (loadi (regst 'rsp) (* n 8)))
+                       (calli (first (spill dest n c v p)) narg))
+                 (set-box! c (+ 1 (unbox c))))
+               (list i))]
+    [tcall (dest narg)
+           (if (and (varia? dest) (equal? dest (varia v)))
+               (begin0
+                 (list (movei (first (spill dest n c v p)) (loadi (regst 'rsp) (* n 8)))
+                       (tcall (first (spill dest n c v p)) narg))
+                 (set-box! c (+ 1 (unbox c))))
+               (list i))]
+    [else (list i)]))
 
-(define in (open-input-file "test"))
+;========== INPUT/OUTPUT ==========
+
+(define (print-func f)
+  (type-case Func f
+    [func (name narg nspl inss)
+            (printf "(:~a ~a ~a \n~a" name narg nspl
+                    (foldr string-append "" (map format-ins inss)))]))
+
+(define (format-ins i)
+  (type-case Inst i
+    [numbr (numb) (format "~a" numb)]
+    [regst (regs) (format "~a" regs)]
+    [label (labl) (format "~a " (string-append ":" labl))]
+    [varia (vari) (format "~a" vari)]
+    [loadi (sorc offs) (format " (mem ~a ~a) " (format-ins sorc) offs)]
+    [stack (stak) (format " (stack-arg ~a) " stak)]
+    [movei (dest sorc) (format "(~a <- ~a)\n" (format-ins dest) (format-ins sorc))]
+    [aropi (oper dest sorc) (format "(~a ~a ~a)\n" (format-ins dest) (format-arop oper) (format-ins sorc))]
+    [sfopi (oper dest sorc) (format "(~a ~a ~a)\n" (format-ins dest) (format-sfop oper) (format-ins sorc))]
+    [compi (comp dest lhs rhs) (format "(~a <- ~a ~a ~a)\n"
+                                       (format-ins dest) (format-ins lhs)
+                                       (format-comp comp) (format-ins rhs))]
+    [cjmpi (comp lhs rhs true fals) (format "(cjump ~a ~a ~a ~a ~a)\n"
+                                            (format-ins lhs) (format-comp comp) (format-ins rhs)
+                                            (format-ins true) (format-ins fals))]
+    [gotoi (labl) (format "(goto ~a)\n" (format-ins labl))]
+    [calli (dest narg) (format "(call ~a ~a)\n" (format-ins dest) narg)]
+    [tcall (dest narg) (format "(tail-call ~a ~a)\n" (format-ins dest) narg)]
+    [cprit () "(call print 1)\n"]
+    [caloc () "(call allocate 2n"]
+    [caerr () "(vall array-error 2)\n"]
+    [retun () "(return)\n"]))
+
+(define (format-arop arop)
+  (type-case Aop arop
+    [addop () "+="]
+    [subop () "-="]
+    [mulop () "*="]
+    [andop () "&="]))
+
+(define (format-sfop sfop)
+  (type-case Sop sfop
+    [sflft () "<<="]
+    [sfrht () ">>="]))
+
+(define (format-comp comp)
+  (type-case Cmp comp
+    [less () "<"]
+    [leeq () "<="]
+    [eqal () "="]))
+
+;========== MAIN ==========
+
+(define in (open-input-file "spill-test/assign_1.L2f"))
 (define l2function (parsef (read in)))
-(println l2function)
+;(println l2function)
 (define var (read in))
 (println var)
 (define prefix (read in))
 (println prefix)
-(println (spill-func l2function var prefix))
+(define result (spill-func l2function var prefix))
+;(println result)
+(print-func result)
