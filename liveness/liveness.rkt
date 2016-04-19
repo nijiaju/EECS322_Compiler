@@ -114,15 +114,21 @@
                [loadi (srcl offl)
                       (type-case Inst srcl
                         [varia (varl) (set-add! (killgen-gen res) varl)]
-                        [regst (regl) (set-add! (killgen-gen res) regl)]
+                        [regst (regl)
+                               (when (not (eq? regl 'rsp))
+                                 (set-add! (killgen-gen res) regl))]
                         [else (error 'kill&gen "Invalid instruction ~a" ins)])]
                [else (error 'kill&gen "Invalid instruction ~a" ins)])
              (type-case Inst sorc
                [varia (vars) (set-add! (killgen-gen res) vars)]
-               [regst (regs) (set-add! (killgen-gen res) regs)]
+               [regst (regs)
+                      (when (not (eq? regs 'rsp))
+                        (set-add! (killgen-gen res) regs))]
                [loadi (srcl offl)
                       (type-case Inst srcl
-                        [regst (regl) (set-add! (killgen-gen res) regl)]
+                        [regst (regl)
+                               (when (not (eq? regl 'rsp))
+                                 (set-add! (killgen-gen res) regl))]
                         [varia (varl) (set-add! (killgen-gen res) varl)]
                         [else (error 'kill&gen "Invalid instruction ~a" ins)])]
                [numbr (num)  (void)]
