@@ -133,7 +133,8 @@
                         [else (error 'kill&gen "Invalid instruction ~a" ins)])]
                [numbr (num)  (void)]
                [label (lab)  (void)]
-               [stack (stak) (set-add! (killgen-gen res) 'rsp)]
+               ;[stack (stak) (set-add! (killgen-gen res) 'rsp)]
+               [stack (stak) (void)]
                [else (error 'kill&gen "Invalid instruction ~a" ins)]))]
     [aropi (oper dest sorc)
            (begin
