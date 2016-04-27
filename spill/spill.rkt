@@ -196,7 +196,7 @@
                                   (list (movei (new-var p (unbox c)) sorc)
                                         (movei (loadi (regst 'rsp) (* n 8)) (new-var p (unbox c))))
                                   (set-box! c (+ 1 (unbox c))))]
-                         [else (movei (loadi (regst 'rsp) (* n 8)) sorc)])]
+                         [else (list (movei (loadi (regst 'rsp) (* n 8)) sorc))])]
                       [else
                        (type-case Inst sorc
                          [varia (vars)
@@ -317,10 +317,13 @@
                     (cond
                       [(eq? vard v)
                        (begin0
-                         (list (movei (first (spill dest n c v p)) (loadi (regst 'rsp) (* n 8)))
-                               (compi comp (first (spill dest n c v p))
-                                      (first (spill lhs n c v p)) (first (spill rhs n c v p)))
-                               (movei (loadi (regst 'rsp) (* n 8)) (first (spill dest n c v p))))
+                         (if (or (and (varia? lhs) (equal? lhs (varia v))) (and (varia? rhs) (equal? rhs (varia v))))
+                             (list (movei (first (spill dest n c v p)) (loadi (regst 'rsp) (* n 8)))
+                                   (compi comp (first (spill dest n c v p))
+                                          (first (spill lhs n c v p)) (first (spill rhs n c v p)))
+                                   (movei (loadi (regst 'rsp) (* n 8)) (first (spill dest n c v p))))
+                             (list (compi comp (first (spill dest n c v p)) lhs rhs)
+                                   (movei (loadi (regst 'rsp) (* n 8)) (first (spill dest n c v p)))))
                          (set-box! c (+ 1 (unbox c))))]
                       [else
                        (if (or (and (varia? lhs) (equal? lhs (varia v))) (and (varia? rhs) (equal? rhs (varia v))))
@@ -364,7 +367,7 @@
 (define (print-func f)
   (type-case Func f
     [func (name narg nspl inss)
-            (printf "(:~a ~a ~a \n~a" name narg nspl
+            (printf "(:~a ~a ~a\n~a)\n" name narg nspl
                     (foldr string-append "" (map format-ins inss)))]))
 
 (define (format-ins i)
@@ -388,8 +391,8 @@
     [calli (dest narg) (format "(call ~a ~a)\n" (format-ins dest) narg)]
     [tcall (dest narg) (format "(tail-call ~a ~a)\n" (format-ins dest) narg)]
     [cprit () "(call print 1)\n"]
-    [caloc () "(call allocate 2n"]
-    [caerr () "(vall array-error 2)\n"]
+    [caloc () "(call allocate 2)\n"]
+    [caerr () "(call array-error 2)\n"]
     [retun () "(return)\n"]))
 
 (define (format-arop arop)
