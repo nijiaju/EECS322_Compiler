@@ -133,7 +133,7 @@
                         [else (error 'kill&gen "Invalid instruction ~a" ins)])]
                [numbr (num)  (void)]
                [label (lab)  (void)]
-               [stack (stak) (set-add! (killgen-gen res) 'rsp)]
+               [stack (stak) (void)]
                [else (error 'kill&gen "Invalid instruction ~a" ins)]))]
     [aropi (oper dest sorc)
            (begin
@@ -278,8 +278,9 @@
                    [k (find-label insl fals)])
                (vector-set! res j (cons i (vector-ref res j)))
                (vector-set! res k (cons i (vector-ref res k))))]
-      [tcall (dest narg) (void)]
       [retun () (void)]
+      [tcall (dest narg) (void)]
+      [caerr () (void)]
       [else (when (< (+ i 1) (vector-length res))
               (vector-set! res (+ i 1) (cons i (vector-ref res (+ i 1)))))]))
   res)
@@ -338,16 +339,22 @@
                   (generate-edges-helper (first l) (rest l)))]))
 
 (define/contract (movei-patch ins)
-  (-> Inst? (listof symbol?))
+  (-> Inst? set?)
   (type-case Inst ins
     [movei (dest sorc)
            (type-case Inst dest
              [varia (vard)
                     (type-case Inst sorc
-                      [varia (vars) (list vard vars)]
-                      [else empty])]
-             [else empty])]
-    [else empty]))
+                      [varia (vars) (set (list vard vars) (list vars vard))]
+                      [regst (regs) (set (list vard regs) (list regs vard))]
+                      [else (set)])]
+             [regst (regd)
+                    (type-case Inst sorc
+                      [varia (vars) (set (list regd vars) (list vars regd))]
+                      [regst (regs) (set (list regd regs) (list regs regd))]
+                      [else (set)])]
+             [else (set)])]
+    [else (set)]))
 
 (define/contract (sfopi-patch ins)
   (-> Inst? set?)
@@ -361,13 +368,13 @@
              [else (set)])]
     [else (set)]))
 
-(define/contract (interference ins in out flag)
+(define/contract (interference ins in out 1st)
   (-> Inst? set-mutable? set-mutable? boolean? set?)
   (set-union
-   (if flag
+   (if 1st
        (list->set (generate-edges (set->list in)))
        (set))
-   (set-remove
+   (set-subtract
     (list->set (generate-edges (set->list
                                 (set-union (list->set (set->list out))
                                            (list->set (set->list (killgen-kill (kill&gen ins))))))))
