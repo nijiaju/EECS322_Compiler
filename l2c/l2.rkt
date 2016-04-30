@@ -743,9 +743,11 @@
 
 ;========== L2 COMPILER ==========
 (define/contract (l2-compiler p)
-  (-> prog? (or/c prog? boolean?))
-  (prog (prog-name p)
-        (map l2-func-compiler (prog-funl p))))
+  (-> prog? (or/c prog? string?))
+  (define l1-result (map l2-func-compiler (prog-funl p)))
+  (if (equal? (ormap boolean? l1-result) #t)
+      "could not register allocate"
+      (prog (prog-name p) l1-result)))
   
 (define/contract (l2-func-compiler f)
   (-> func? (or/c func? boolean?))
@@ -783,11 +785,11 @@
     [stack (stak) (loadi (regst 'rsp) (+ nspl stak))]
     [movei (dest sorc) (movei (generate-l1-ins h dest nspl) (generate-l1-ins h sorc nspl))]
     [aropi (oper dest sorc) (aropi oper (generate-l1-ins h dest nspl) (generate-l1-ins h sorc nspl))]
-    [sfopi (oper dest sorc) (aropi oper (generate-l1-ins h dest nspl) (generate-l1-ins h sorc nspl))]
+    [sfopi (oper dest sorc) (sfopi oper (generate-l1-ins h dest nspl) (generate-l1-ins h sorc nspl))]
     [compi (comp dest lhs rhs)
-           (compi (generate-l1-ins h dest nspl) (generate-l1-ins h lhs nspl) (generate-l1-ins h rhs nspl))]
+           (compi comp (generate-l1-ins h dest nspl) (generate-l1-ins h lhs nspl) (generate-l1-ins h rhs nspl))]
     [cjmpi (comp lhs rhs true fals)
-           (cjmpi (generate-l1-ins h lhs nspl) (generate-l1-ins h rhs nspl) true fals)]
+           (cjmpi comp (generate-l1-ins h lhs nspl) (generate-l1-ins h rhs nspl) true fals)]
     [calli (dest narg) (calli (generate-l1-ins h dest nspl) narg)]
     [tcall (dest narg) (tcall (generate-l1-ins h dest nspl) narg)]
     [else i]))
@@ -817,8 +819,11 @@
   (display ")\n"))
 
 (define (display-prog p)
-  (printf "(~a\n~a)\n" (prog-name p)
-          (foldr string-append "" (map format-func (prog-funl p)))))
+  (cond
+    [(string? p) (println p)]
+    [(prog? p) (printf "(~a\n~a)\n" (prog-name p)
+                       (foldr string-append "" (map format-func (prog-funl p))))]
+    [else (error 'display-prog "unknown error")]))
 
 (define (format-func f)
   (format "(~a ~a ~a\n~a)\n" (func-name f) (func-narg f) (func-nspl f)
@@ -867,14 +872,14 @@
     [leeq () "<="]
     [eqal () "="]))
 
-;(require racket/cmdline)
-;(define file-to-compile
-;  (command-line
-;   #:args (filename)
-;   filename))
+(require racket/cmdline)
+(define file-to-compile
+  (command-line
+   #:args (filename)
+   filename))
 
 ;========== MAIN ==========
-(define in (open-input-file "2-test/9.L2"))
+(define in (open-input-file file-to-compile))
 (define l2p (parsep (read in)))
 ;(define l2f (first (prog-funl l2p)))
 ;(println (func-insl l2f))
