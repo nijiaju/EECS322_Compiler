@@ -742,12 +742,17 @@
     [else (error 'assign-reg "can not assign a register")]))
 
 ;========== L2 COMPILER ==========
-(define/contract (l2tol1 f)
-  (-> func? (or/c func? void?))
+(define/contract (l2-compiler p)
+  (-> prog? (or/c prog? boolean?))
+  (prog (prog-name p)
+        (map l2-func-compiler (prog-funl p))))
+  
+(define/contract (l2-func-compiler f)
+  (-> func? (or/c func? boolean?))
   (define b (box f))
   (define h (register-allocate b))
   (cond
-    [(equal? #f h) (println "could not register allocate")]
+    [(equal? #f h) #f]
     [(hash? h) (generate-l1 h (unbox b))]
     [else (error 'l2tol1 "unknown error")]))
 
@@ -811,15 +816,19 @@
     (displayln (cons v (sort (get-neighbors g v) symbol<?))))
   (display ")\n"))
 
-(define (print-func f)
-  (printf "(~a ~a ~a\n~a)\n" (func-name f) (func-narg f) (func-nspl f)
+(define (display-prog p)
+  (printf "(~a\n~a)\n" (prog-name p)
+          (foldr string-append "" (map format-func (prog-funl p)))))
+
+(define (format-func f)
+  (format "(~a ~a ~a\n~a)\n" (func-name f) (func-narg f) (func-nspl f)
           (foldr string-append "" (map format-ins (func-insl f)))))
 
 (define (format-ins i)
   (type-case Inst i
     [numbr (numb) (format "~a" numb)]
     [regst (regs) (format "~a" regs)]
-    [label (labl) (format "~a " (string-append ":" labl))]
+    [label (labl) (format "~a " labl)]
     [varia (vari) (format "~a" vari)]
     [loadi (sorc offs) (format " (mem ~a ~a) " (format-ins sorc) offs)]
     [stack (stak) (format " (stack-arg ~a) " stak)]
@@ -865,11 +874,11 @@
 ;   filename))
 
 ;========== MAIN ==========
-(define in (open-input-file "2-test/5.L2"))
+(define in (open-input-file "2-test/9.L2"))
 (define l2p (parsep (read in)))
-(define l2f (first (prog-funl l2p)))
+;(define l2f (first (prog-funl l2p)))
 ;(println (func-insl l2f))
 ;(display-inout (in&out (func-insl l2f)))
 ;(define g (build-graph (func-insl l2f)))
 ;(display-graph g)
-(print-func (l2tol1 l2f))
+(display-prog (l2-compiler l2p))
