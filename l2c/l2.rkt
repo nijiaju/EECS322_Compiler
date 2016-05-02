@@ -782,7 +782,7 @@
   (type-case Inst i
     [varia (vari) (regst (hash-ref h vari))]
     [loadi (sorc offs) (loadi (generate-l1-ins h sorc nspl) offs)]
-    [stack (stak) (loadi (regst 'rsp) (+ nspl stak))]
+    [stack (stak) (loadi (regst 'rsp) (+ (* 8 nspl) stak))]
     [movei (dest sorc) (movei (generate-l1-ins h dest nspl) (generate-l1-ins h sorc nspl))]
     [aropi (oper dest sorc) (aropi oper (generate-l1-ins h dest nspl) (generate-l1-ins h sorc nspl))]
     [sfopi (oper dest sorc) (sfopi oper (generate-l1-ins h dest nspl) (generate-l1-ins h sorc nspl))]
