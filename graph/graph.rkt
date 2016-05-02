@@ -92,7 +92,7 @@
       (add-vertex! g v)))
   g)
 
-(define/contract (find-vertex g)
+(define/contract (pick-vertex g)
   (-> graph? (or/c symbol? boolean?))
   (define vertex #f)
   (define max -1)
@@ -110,7 +110,7 @@
   (define res (make-hash))
   ;remove
   (for ([i (in-range (length (get-vertices g)))])
-    (set! v (find-vertex g))
+    (set! v (pick-vertex g))
     #:break (equal? v #f)
 ;    (printf "pick vertex ~a\n" v)
     (remove-vertex! g v)
