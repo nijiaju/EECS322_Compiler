@@ -52,9 +52,18 @@
 
 (define var-counter (box 0))
 
-(define (l3-get-suffix)
+(define (l3-get-var-suffix)
   (begin0 (number->string (unbox var-counter))
           (set-box! var-counter (+ (unbox var-counter) 1))))
 
 (define (var-suffix var)
-  (string->symbol (string-append (symbol->string var) (l3-get-suffix))))
+  (string->symbol (string-append (symbol->string var) (l3-get-var-suffix))))
+
+(define lab-counter (box 0))
+
+(define (l3-get-label-suffix)
+  (begin0 (number->string (unbox lab-counter))
+          (set-box! lab-counter (+ (unbox lab-counter) 1))))
+
+(define (label-suffix lab)
+  (string->symbol (string-append (symbol->string lab) (l3-get-label-suffix))))
