@@ -14,7 +14,7 @@
 
 (define (l3-parse sexp)
   (match sexp
-    [`(let ([,e1 ,e2]) ,e3) (l3lete e1 (l3-parsd e2) (l3-parse e3))]
+    [`(let ([,e1 ,e2]) ,e3) (l3lete (l3-parsv e1) (l3-parsd e2) (l3-parse e3))]
     [`(if ,e1 ,e2 ,e3) (l3ife (l3-parsv e1) (l3-parse e2) (l3-parse e3))]
     [_ (l3defe (l3-parsd sexp))]))
 
@@ -45,7 +45,7 @@
   (match sexp
     [(? number?)      (l3numbe (encode sexp))]
     [(? is-label?)    (l3label sexp)]
-    [(? is-variable?) (l3varia (var-suffix sexp))]
+    [(? is-variable?) (l3varia sexp)]
     [_  (error 'l3-parsv "syntax error")]))
 
 (define (encode n) (+ (* n 2) 1))

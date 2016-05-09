@@ -2,14 +2,39 @@
 
 (require "l3-definition.rkt" "l3-parser.rkt" "../l2c/l2-definition.rkt")
 
-;(define/contract (l3-compile-exp exp)
-;  (-> L3Expression? 
-;  (type-case L3Expression exp
-;    [l3lete (vari valu expr)
+;(define/contract (l3-compile-prog p)
+;  (-> l3prog? (listof Inst?))
+  
+
+(define/contract (l3-compile-func f)
+  (-> l3func? func?)
+  (func (l3func-l3fname f)
+        (l3func-l3nargs f)
+        0
+        (append (l3-compile-def-call-get-arg (map varia (l3func-l3fvarl f)) 0)
+                (l3-compile-exp (l3func-l3fbody f)))))
+
+(define/contract (l3-compile-exp exp)
+  (-> L3Expression? (listof Inst?))
+  (type-case L3Expression exp
+    [l3lete (vari defi expr)
+            (append (l3-compile-def defi vari #f)
+                    (l3-compile-exp expr))]
+    [l3ife  (cond then else)
+            (let ([then-label (label (label-suffix ':then-label-))]
+                  [else-label (label (label-suffix ':else-label-))])
+              (append (list (cjmpi (eqal) (l3-value-l2 cond) (numbr 1)
+                                   then-label else-label)
+                            then-label)
+                      (l3-compile-exp then)
+                      (list else-label)
+                      (l3-compile-exp else)))]
+    [l3defe (d)
+            (l3-compile-def d #f #t)]))
 
 (define/contract (l3-compile-def def var tail)
-  (-> L3Definition? (or/c symbol? boolean?) boolean? (listof Inst?))
-  (define dest (if (equal? var #f) (regst 'rax) (varia var)))
+  (-> L3Definition? (or/c L3Value? boolean?) boolean? (listof Inst?))
+  (define dest (if (equal? var #f) (regst 'rax) (l3-value-l2 var)))
   (type-case L3Definition def
     [l3biop (oper lhs rhs)
             (cond
@@ -17,10 +42,10 @@
                (type-case Aop oper
                  [addop ()
                         (l3-compile-def-add/sub
-                         oper dest (l3-value-l2 lhs) (l3-value-l2 rhs))]
+                         oper dest (l3-value-l2 lhs) (l3-value-l2 rhs) tail)]
                  [subop ()
                         (l3-compile-def-add/sub
-                         oper dest (l3-value-l2 lhs) (l3-value-l2 rhs))]
+                         oper dest (l3-value-l2 lhs) (l3-value-l2 rhs) tail)]
                  [mulop ()
                         (l3-compile-def-mul
                          oper dest (l3-value-l2 lhs) (l3-value-l2 rhs))]
@@ -30,6 +55,9 @@
                 oper dest (l3-value-l2 lhs) (l3-value-l2 rhs))])]
     [l3pred (oper valu)
             (l3-compile-def-pred oper dest (l3-value-l2 valu))]
+    [l3funcal (name argl)
+              (l3-compile-def-call
+               dest (l3-value-l2 name) (map l3-value-l2 argl) tail)]
     [l3newarr (size value)
               (l3-compile-def-newa dest (l3-value-l2 size) (l3-value-l2 value))]
     [l3newtup (valuel)
@@ -50,8 +78,7 @@
     [l3clvars (clos)
               (l3-compile-def (l3arrref clos (l3numbe 3)) var tail)]
     [l3value  (value)
-              (list (movei dest (l3-value-l2 value)))]
-    [else (error 'l3-compile-def "unknown l3 definition")]))
+              (list (movei dest (l3-value-l2 value)))]))
 
 (define/contract (l3-value-l2 val)
   (-> L3Value? Inst?)
@@ -60,17 +87,20 @@
     [l3label (lab) (label lab)]
     [l3numbe (num) (numbr num)]))
 
-(define/contract (l3-compile-def-add/sub oper dest lhs rhs)
+(define/contract (l3-compile-def-add/sub oper dest lhs rhs tail)
   (-> (or/c addop? subop?)
       (or/c numbr? regst? label? varia?)
       (or/c numbr? label? varia?)
       (or/c numbr? label? varia?)
+      boolean?
       (listof Inst?))
-  (list (movei dest lhs)
-        (aropi oper dest rhs)
-        (cond
-          [(addop? oper) (aropi (subop) dest (numbr 1))]
-          [(subop? oper) (aropi (addop) dest (numbr 1))])))
+  (append
+   (list (movei dest lhs)
+         (aropi oper dest rhs)
+         (cond
+           [(addop? oper) (aropi (subop) dest (numbr 1))]
+           [(subop? oper) (aropi (addop) dest (numbr 1))]))
+   (if tail (list (retun)) empty)))
   
 (define/contract (l3-compile-def-mul oper dest lhs rhs)
   (-> mulop? (or/c numbr? regst? label? varia?)
@@ -102,6 +132,70 @@
             (aropi (mulop) dest (numbr 2)) (aropi (mulop) dest (numbr -2)))
         (if (l3isnumber? oper)
             (aropi (addop) dest (numbr 1)) (aropi (addop) dest (numbr 3)))))
+
+(define/contract (l3-compile-def-call dest name argl tail)
+  (-> (or/c numbr? regst? label? varia?)
+      (or/c label? varia?)
+      (listof (or/c numbr? varia? label?))
+      boolean?
+      (listof Inst?))
+  (when (> (length argl) 6) (set! tail #f))
+  (if tail
+      (l3-compile-def-tcall name argl)
+      (l3-compile-def-fcall dest name argl)))
+
+(define/contract (l3-compile-def-tcall name argl)
+  (-> (or/c label? varia?)
+      (listof (or/c numbr? varia? label?))
+      (listof Inst?))
+  (append (l3-compile-def-call-gen-arg argl 0)
+          (list (tcall name (length argl)))))
+
+(define/contract (l3-compile-def-fcall dest name argl)
+  (-> (or/c numbr? regst? label? varia?)
+      (or/c label? varia?)
+      (listof (or/c numbr? varia? label?))
+      (listof Inst?))
+  (define return-label (label (label-suffix ':return-label-)))
+  (append
+   (list (movei (loadi (regst 'rsp) -8) return-label))
+   (l3-compile-def-call-gen-arg argl 0)
+   (list (calli name (length argl))
+         return-label
+         (movei dest (regst 'rax)))))
+
+(define/contract (l3-compile-def-call-gen-arg argl counter)
+  (-> (listof (or/c numbr? varia? label?)) number? (listof Inst?))
+  (if (empty? argl)
+      empty
+      (cons
+       (match counter
+         [0 (movei (regst 'rdi) (first argl))]
+         [1 (movei (regst 'rsi) (first argl))]
+         [2 (movei (regst 'rdx) (first argl))]
+         [3 (movei (regst 'rcx) (first argl))]
+         [4 (movei (regst 'r8)  (first argl))]
+         [5 (movei (regst 'r9)  (first argl))]
+         [(? (λ (x) (> x 5))) (movei (loadi (regst 'rsp) (* (- counter 4) -8))
+                                     (first argl))]
+         [else (error 'l3-compile-def-call-gen-arg)])
+       (l3-compile-def-call-gen-arg (rest argl) (+ counter 1)))))
+
+(define/contract (l3-compile-def-call-get-arg argl counter)
+  (-> (listof (or/c numbr? varia? label?)) number? (listof Inst?))
+  (if (empty? argl)
+      empty
+      (cons
+       (match counter
+         [0 (movei (first argl) (regst 'rdi))]
+         [1 (movei (first argl) (regst 'rsi))]
+         [2 (movei (first argl) (regst 'rdx))]
+         [3 (movei (first argl) (regst 'rcx))]
+         [4 (movei (first argl) (regst 'r8))]
+         [5 (movei (first argl) (regst 'r9))]
+         [(? (λ (x) (> x 5))) (movei (first argl) (stack (* (- (length argl) 1) 8)))]
+         [else (error 'l3-compile-def-call-gen-arg)])
+       (l3-compile-def-call-get-arg (rest argl) (+ counter 1)))))
 
 (define/contract (l3-compile-def-newa dest size value)
   (-> (or/c numbr? regst? label? varia?) (or/c numbr? varia?) (or/c numbr? varia?)

@@ -37,7 +37,7 @@
   [l3value  (valu L3Value?)])
 
 (define-type L3Expression
-  [l3lete (vari is-variable?) (valu L3Definition?) (expr L3Expression?)]
+  [l3lete (vari L3Value?) (defi L3Definition?) (expr L3Expression?)]
   [l3ife  (cond L3Value?) (then L3Expression?) (else L3Expression?)]
   [l3defe (d L3Definition?)])
 
