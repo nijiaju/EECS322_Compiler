@@ -1,6 +1,7 @@
 #lang plai
 
-(require rackunit "l3-compiler.rkt" "l3-definition.rkt" "l3-parser.rkt" "../l2c/l2-definition.rkt")
+(require rackunit "l3-compiler.rkt" "l3-definition.rkt" "l3-parser.rkt"
+         "../l2c/l2-definition.rkt" "../l2c/l2-format.rkt")
 
 (check-equal? (l3-compile-def (l3-parsd '(+ x 3)) #f #t)
               (list
@@ -208,6 +209,30 @@
                (movei (varia 'h) (stack 8))
                (movei (varia 'i) (stack 0))))
 
-(l3-compile-exp (l3-parse '(let ([x 1]) (+ x 2))))
+(check-equal? (l3-compile-exp (l3-parse '(let ([x 1]) (+ x 2))))
+              (list
+               (movei (varia 'x) (numbr 3))
+               (movei (regst 'rax) (varia 'x))
+               (aropi (addop) (regst 'rax) (numbr 5))
+               (aropi (subop) (regst 'rax) (numbr 1))
+               (retun)))
 
-(l3-compile-func (l3-parsf '(:func (a b c d e f g h) (+ a b))))
+#|
+(check-equal? (l3-compile-func (l3-parsf '(:func (a b c d e f g h) (+ a b))))
+              (func ':func 8 0
+                    (list
+                     (movei (varia 'a) (regst 'rdi))
+                     (movei (varia 'b) (regst 'rsi))
+                     (movei (varia 'c) (regst 'rdx))
+                     (movei (varia 'd) (regst 'rcx))
+                     (movei (varia 'e) (regst 'r8))
+                     (movei (varia 'f) (regst 'r9))
+                     (movei (varia 'g) (stack 8))
+                     (movei (varia 'h) (stack 0))
+                     (movei (regst 'rax) (varia 'a))
+                     (aropi (addop) (regst 'rax) (varia 'b))
+                     (aropi (subop) (regst 'rax) (numbr 1))
+                     (retun))))
+|#
+(format-func (l3-compile-func (l3-parsf '(:func (a b c d e f g h) (+ a b)))))
+(format-func (l3-compile-prog-entry (l3-parse '(:main 1 2 3 4 5)) ':__MAIN__))

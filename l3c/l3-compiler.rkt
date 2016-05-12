@@ -2,9 +2,26 @@
 
 (require "l3-definition.rkt" "l3-parser.rkt" "../l2c/l2-definition.rkt")
 
-;(define/contract (l3-compile-prog p)
-;  (-> l3prog? (listof Inst?))
-  
+(define/contract (l3-compile-prog p)
+  (-> l3prog? prog?)
+  (define entry_func (label-suffix ':__MAIN__))
+  (prog entry_func
+        (cons (l3-compile-prog-entry (l3prog-l3entry p) entry_func)
+              (map l3-compile-func (l3prog-l3funcl p)))))
+
+(define/contract (l3-compile-prog-entry e entry_func)
+  (-> L3Expression? symbol? func?)
+  (type-case L3Expression e
+    [l3defe (d)
+            (type-case L3Definition d
+              [l3funcal (name argl)
+                        (let ([narg (length argl)])
+                          (func entry_func narg 0
+                                (append (l3-compile-def-call-gen-arg
+                                         (map l3-value-l2 argl) 0)
+                                        (list (tcall (label entry_func) narg)))))]
+              [else (error 'l3-compile-prog-main "syntax error")])]
+    [else (error 'l3-compile-prog-main "syntax error")]))
 
 (define/contract (l3-compile-func f)
   (-> l3func? func?)
@@ -194,7 +211,7 @@
          [4 (movei (first argl) (regst 'r8))]
          [5 (movei (first argl) (regst 'r9))]
          [(? (λ (x) (> x 5))) (movei (first argl) (stack (* (- (length argl) 1) 8)))]
-         [else (error 'l3-compile-def-call-gen-arg)])
+         [else (error 'l3-compile-def-call-get-arg)])
        (l3-compile-def-call-get-arg (rest argl) (+ counter 1)))))
 
 (define/contract (l3-compile-def-newa dest size value)
