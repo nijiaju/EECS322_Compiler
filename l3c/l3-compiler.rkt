@@ -145,7 +145,8 @@
          (if (l3isnumber? oper)
              (aropi (mulop) dest (numbr 2)) (aropi (mulop) dest (numbr -2)))
          (if (l3isnumber? oper)
-             (aropi (addop) dest (numbr 1)) (aropi (addop) dest (numbr 3))))))
+             (aropi (addop) dest (numbr 1)) (aropi (addop) dest (numbr 3))))
+   (if tail (list (retun)) empty)))
 
 (define/contract (l3-compile-def-call dest name argl tail)
   (-> (or/c numbr? regst? label? varia?)

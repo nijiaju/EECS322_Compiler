@@ -1,5 +1,5 @@
 #!/bin/bash
 
 export PATH=/home/software/racket-6.4/bin/:$PATH
-racket l3-main.rkt "$@"
-#./l3-main "$@"
+#racket l3-main.rkt "$@"
+./l3-main "$@"
