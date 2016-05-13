@@ -16,12 +16,16 @@
             (type-case L3Definition d
               [l3funcal (name argl)
                         (let ([narg (length argl)])
-                          (func entry_func narg 0
-                                (append (l3-compile-def-call-gen-arg
-                                         (map l3-value-l2 argl) 0)
-                                        (list (tcall (label entry_func) narg)))))]
-              [else (error 'l3-compile-prog-main "syntax error")])]
-    [else (error 'l3-compile-prog-main "syntax error")]))
+                          (func entry_func 0 0
+                                ;(append (l3-compile-def-call-gen-arg
+                                ;         (map l3-value-l2 argl) 0)
+                                ;        (if (< narg 7)
+                                ;            (list (tcall (l3-value-l2 name) narg))
+                                ;            (list (calli (l3-value-l2 name) narg)
+                                ;                  (retun))))))]
+                                (l3-compile-exp e)))]
+              [else (func entry_func 0 0 (l3-compile-exp e))])]
+    [else (func entry_func 0 0 (l3-compile-exp e))]))
 
 (define/contract (l3-compile-func f)
   (-> l3func? func?)
@@ -38,10 +42,10 @@
             (append (l3-compile-def defi vari #f)
                     (l3-compile-exp expr))]
     [l3ife  (cond then else)
-            (let ([then-label (label (label-suffix ':then-label-))]
-                  [else-label (label (label-suffix ':else-label-))])
+            (let ([then-label (label (label-suffix ':then_label_))]
+                  [else-label (label (label-suffix ':else_label_))])
               (append (list (cjmpi (eqal) (l3-value-l2 cond) (numbr 1)
-                                   then-label else-label)
+                                   else-label then-label)
                             then-label)
                       (l3-compile-exp then)
                       (list else-label)
@@ -65,29 +69,29 @@
                          oper dest (l3-value-l2 lhs) (l3-value-l2 rhs) tail)]
                  [mulop ()
                         (l3-compile-def-mul
-                         oper dest (l3-value-l2 lhs) (l3-value-l2 rhs))]
+                         oper dest (l3-value-l2 lhs) (l3-value-l2 rhs) tail)]
                  [else (error 'l3-compile-def "l3biop-aop-unknown-operation")])]
               [(Cmp? oper)
                (l3-compile-def-cmp
-                oper dest (l3-value-l2 lhs) (l3-value-l2 rhs))])]
+                oper dest (l3-value-l2 lhs) (l3-value-l2 rhs) tail)])]
     [l3pred (oper valu)
-            (l3-compile-def-pred oper dest (l3-value-l2 valu))]
+            (l3-compile-def-pred oper dest (l3-value-l2 valu) tail)]
     [l3funcal (name argl)
               (l3-compile-def-call
                dest (l3-value-l2 name) (map l3-value-l2 argl) tail)]
     [l3newarr (size value)
-              (l3-compile-def-newa dest (l3-value-l2 size) (l3-value-l2 value))]
+              (l3-compile-def-newa dest (l3-value-l2 size) (l3-value-l2 value) tail)]
     [l3newtup (valuel)
-              (l3-compile-def-newt dest (map l3-value-l2 valuel))]
+              (l3-compile-def-newt dest (map l3-value-l2 valuel) tail)]
     [l3arrref (array posi)
-              (l3-compile-def-aref dest (l3-value-l2 array) (l3-value-l2 posi))]
+              (l3-compile-def-aref dest (l3-value-l2 array) (l3-value-l2 posi) tail)]
     [l3arrset (array posi value)
               (l3-compile-def-aset
-               dest (l3-value-l2 array) (l3-value-l2 posi) (l3-value-l2 value))]
+               dest (l3-value-l2 array) (l3-value-l2 posi) (l3-value-l2 value) tail)]
     [l3arrlen (array)
-              (l3-compile-def-alen dest (l3-value-l2 array))]
+              (l3-compile-def-alen dest (l3-value-l2 array) tail)]
     [l3printd (value)
-              (l3-compile-def-print dest (l3-value-l2 value))]
+              (l3-compile-def-print dest (l3-value-l2 value) tail)]
     [l3makecl (name vars)
               (l3-compile-def (l3newtup (list (l3label name) vars)) var tail)]
     [l3clproc (clos)
@@ -95,7 +99,9 @@
     [l3clvars (clos)
               (l3-compile-def (l3arrref clos (l3numbe 3)) var tail)]
     [l3value  (value)
-              (list (movei dest (l3-value-l2 value)))]))
+              (append
+               (list (movei dest (l3-value-l2 value)))
+               (if tail (list (retun)) empty))]))
 
 (define/contract (l3-value-l2 val)
   (-> L3Value? Inst?)
@@ -119,36 +125,44 @@
            [(subop? oper) (aropi (addop) dest (numbr 1))]))
    (if tail (list (retun)) empty)))
   
-(define/contract (l3-compile-def-mul oper dest lhs rhs)
+(define/contract (l3-compile-def-mul oper dest lhs rhs tail)
   (-> mulop? (or/c numbr? regst? label? varia?)
       (or/c numbr? label? varia?) (or/c numbr? label? varia?)
+      boolean?
       (listof Inst?))
   (define temp (varia (var-suffix '__tmp__)))
-  (list (movei dest lhs)
-        (sfopi (sfrht) dest (numbr 1))
-        (movei temp rhs)
-        (sfopi (sfrht) temp (numbr 1))
-        (aropi oper dest temp)
-        (aropi (mulop) dest (numbr 2))
-        (aropi (addop) dest (numbr 1))))
+  (append
+   (list (movei dest lhs)
+         (sfopi (sfrht) dest (numbr 1))
+         (movei temp rhs)
+         (sfopi (sfrht) temp (numbr 1))
+         (aropi oper dest temp)
+         (aropi (mulop) dest (numbr 2))
+         (aropi (addop) dest (numbr 1)))
+   (if tail (list (retun)) empty)))
 
-(define/contract (l3-compile-def-cmp oper dest lhs rhs)
+(define/contract (l3-compile-def-cmp oper dest lhs rhs tail)
   (-> Cmp? (or/c numbr? regst? label? varia?)
       (or/c numbr? label? varia?) (or/c numbr? label? varia?)
+      boolean?
       (listof Inst?))
-  (list (compi oper dest lhs rhs)
-        (sfopi (sflft) dest (numbr 1))
-        (aropi (addop) dest (numbr 1))))
+  (append
+   (list (compi oper dest lhs rhs)
+         (sfopi (sflft) dest (numbr 1))
+         (aropi (addop) dest (numbr 1)))
+   (if tail (list (retun)) empty)))
 
-(define/contract (l3-compile-def-pred oper dest valu)
+(define/contract (l3-compile-def-pred oper dest valu tail)
   (-> Pred? (or/c numbr? regst? label? varia?) (or/c numbr? label? varia?)
+      boolean?
       (listof Inst?))
-  (list (movei dest valu)
-        (aropi (andop) dest (numbr 1))
-        (if (l3isnumber? oper)
-            (aropi (mulop) dest (numbr 2)) (aropi (mulop) dest (numbr -2)))
-        (if (l3isnumber? oper)
-            (aropi (addop) dest (numbr 1)) (aropi (addop) dest (numbr 3)))))
+  (append
+   (list (movei dest valu)
+         (aropi (andop) dest (numbr 1))
+         (if (l3isnumber? oper)
+             (aropi (mulop) dest (numbr 2)) (aropi (mulop) dest (numbr -2)))
+         (if (l3isnumber? oper)
+             (aropi (addop) dest (numbr 1)) (aropi (addop) dest (numbr 3))))))
 
 (define/contract (l3-compile-def-call dest name argl tail)
   (-> (or/c numbr? regst? label? varia?)
@@ -156,24 +170,27 @@
       (listof (or/c numbr? varia? label?))
       boolean?
       (listof Inst?))
-  (when (> (length argl) 6) (set! tail #f))
   (if tail
-      (l3-compile-def-tcall name argl)
+      (l3-compile-def-tcall dest name argl)
       (l3-compile-def-fcall dest name argl)))
 
-(define/contract (l3-compile-def-tcall name argl)
-  (-> (or/c label? varia?)
+(define/contract (l3-compile-def-tcall dest name argl)
+  (-> (or/c numbr? regst? label? varia?)
+      (or/c label? varia?)
       (listof (or/c numbr? varia? label?))
       (listof Inst?))
-  (append (l3-compile-def-call-gen-arg argl 0)
-          (list (tcall name (length argl)))))
+  (if (< (length argl) 7)
+      (append (l3-compile-def-call-gen-arg argl 0)
+              (list (tcall name (length argl))))
+      (append (l3-compile-def-fcall dest name argl)
+              (list (retun)))))
 
 (define/contract (l3-compile-def-fcall dest name argl)
   (-> (or/c numbr? regst? label? varia?)
       (or/c label? varia?)
       (listof (or/c numbr? varia? label?))
       (listof Inst?))
-  (define return-label (label (label-suffix ':return-label-)))
+  (define return-label (label (label-suffix ':return_label_)))
   (append
    (list (movei (loadi (regst 'rsp) -8) return-label))
    (l3-compile-def-call-gen-arg argl 0)
@@ -214,28 +231,33 @@
          [else (error 'l3-compile-def-call-get-arg)])
        (l3-compile-def-call-get-arg (rest argl) (+ counter 1)))))
 
-(define/contract (l3-compile-def-newa dest size value)
+(define/contract (l3-compile-def-newa dest size value tail)
   (-> (or/c numbr? regst? label? varia?) (or/c numbr? varia?) (or/c numbr? varia?)
+      boolean?
       (listof Inst?))
-  (list (movei (regst 'rdi) size)
-        (movei (regst 'rsi) value)
-        (caloc)
-        (movei dest (regst 'rax))))
+  (append
+   (list (movei (regst 'rdi) size)
+         (movei (regst 'rsi) value)
+         (caloc)
+         (movei dest (regst 'rax)))
+   (if tail (list (retun)) empty)))
 
-(define/contract (l3-compile-def-newt dest valuel)
+(define/contract (l3-compile-def-newt dest valuel tail)
   (-> (or/c numbr? regst? label? varia?) (listof (or/c numbr? varia? label?))
+      boolean?
       (listof Inst?))
   (define n (varia (var-suffix '__tmp__)))
   (define temp (varia (var-suffix '__tmp__)))
-  (define loop (label (label-suffix ':loop-)))
-  (define exit-loop (label (label-suffix ':exit-loop-)))
-  (define cont-loop (label (label-suffix ':cont-loop-)))
+  (define loop (label (label-suffix ':loop_)))
+  (define exit-loop (label (label-suffix ':exit_loop_)))
+  (define cont-loop (label (label-suffix ':cont_loop_)))
   (append
    (list (movei (regst 'rdi) (numbr (encode (length valuel))))
          (movei (regst 'rsi) (numbr 1))
          (caloc)
          (movei dest (regst 'rax))) ;allocate array
-   (l3-compile-def-newt-init dest valuel 8)))
+   (l3-compile-def-newt-init dest valuel 8)
+   (if tail (list (retun)) empty)))
         
 (define/contract (l3-compile-def-newt-init tuple valuel offset)
   (-> (or/c numbr? regst? label? varia?) (listof (or/c numbr? varia? label?)) number?
@@ -245,58 +267,70 @@
             (l3-compile-def-newt-init tuple (rest valuel) (+ offset 8)))
       empty))  
 
-(define/contract (l3-compile-def-aref dest array posi)
+(define/contract (l3-compile-def-aref dest array posi tail)
   (-> (or/c numbr? regst? label? varia?) (or/c numbr? varia?) (or/c numbr? varia?)
+      boolean?
       (listof Inst?))
   (define temp (varia (var-suffix '__tmp__)))
-  (define bounds-pass (label (label-suffix ':bounds-pass-)))
-  (define bounds-fail (label (label-suffix ':bounds-fail-)))
-  (list (movei dest posi)
-        (sfopi (sfrht) dest (numbr 1)) ;decode position
-        (movei temp (loadi array 0))
-        (cjmpi (less) dest temp bounds-pass bounds-fail)
-        bounds-fail
-        (movei (regst 'rdi) array)
-        (movei (regst 'rsi) posi)
-        (caerr)
-        bounds-pass
-        (sfopi (sflft) dest (numbr 3))
-        (aropi (addop) dest array)
-        (movei dest (loadi dest 8))))
+  (define bounds-pass (label (label-suffix ':bounds_pass_)))
+  (define bounds-fail (label (label-suffix ':bounds_fail_)))
+  (append
+   (list (movei dest posi)
+         (sfopi (sfrht) dest (numbr 1)) ;decode position
+         (movei temp (loadi array 0))
+         (cjmpi (less) dest temp bounds-pass bounds-fail)
+         bounds-fail
+         (movei (regst 'rdi) array)
+         (movei (regst 'rsi) posi)
+         (caerr)
+         bounds-pass
+         (sfopi (sflft) dest (numbr 3))
+         (aropi (addop) dest array)
+         (movei dest (loadi dest 8)))
+   (if tail (list (retun)) empty)))
 
-(define/contract (l3-compile-def-aset dest array posi value)
+(define/contract (l3-compile-def-aset dest array posi value tail)
   (-> (or/c numbr? regst? label? varia?)
       (or/c numbr? varia?)
       (or/c numbr? varia?)
       (or/c numbr? varia?)
+      boolean?
       (listof Inst?))
   (define temp (varia (var-suffix '__tmp__)))
-  (define bounds-pass (label (label-suffix ':bounds-pass-)))
-  (define bounds-fail (label (label-suffix ':bounds-fail-)))
-  (list (movei dest posi)
-        (sfopi (sfrht) dest (numbr 1)) ;decode position
-        (movei temp (loadi array 0))
-        (cjmpi (less) dest temp bounds-pass bounds-fail)
-        bounds-fail
-        (movei (regst 'rdi) array)
-        (movei (regst 'rsi) posi)
-        (caerr)
-        bounds-pass
-        (sfopi (sflft) dest (numbr 3))
-        (aropi (addop) dest array)
-        (movei (loadi dest 8) value)
-        (movei dest (numbr 1))))
+  (define bounds-pass (label (label-suffix ':bounds_pass_)))
+  (define bounds-fail (label (label-suffix ':bounds_fail_)))
+  (append
+   (list (movei dest posi)
+         (sfopi (sfrht) dest (numbr 1)) ;decode position
+         (movei temp (loadi array 0))
+         (cjmpi (less) dest temp bounds-pass bounds-fail)
+         bounds-fail
+         (movei (regst 'rdi) array)
+         (movei (regst 'rsi) posi)
+         (caerr)
+         bounds-pass
+         (sfopi (sflft) dest (numbr 3))
+         (aropi (addop) dest array)
+         (movei (loadi dest 8) value)
+         (movei dest (numbr 1)))
+   (if tail (list (retun)) empty)))
 
-(define/contract (l3-compile-def-alen dest array)
+(define/contract (l3-compile-def-alen dest array tail)
   (-> (or/c numbr? regst? label? varia?) (or/c numbr? varia?)
+      boolean?
       (listof Inst?))
-  (list (movei dest (loadi array 0))
-        (sfopi (sflft) dest (numbr 1))
-        (aropi (addop) dest (numbr 1))))
+  (append
+   (list (movei dest (loadi array 0))
+         (sfopi (sflft) dest (numbr 1))
+         (aropi (addop) dest (numbr 1)))
+   (if tail (list (retun)) empty)))
 
-(define/contract (l3-compile-def-print dest value)
+(define/contract (l3-compile-def-print dest value tail)
   (-> (or/c numbr? regst? label? varia?) (or/c numbr? varia?)
+      boolean?
       (listof Inst?))
-  (list (movei (regst 'rdi) value)
-        (cprit)
-        (movei dest (regst 'rax))))
+  (append
+   (list (movei (regst 'rdi) value)
+         (cprit)
+         (movei dest (regst 'rax)))
+   (if tail (list (retun)) empty)))
