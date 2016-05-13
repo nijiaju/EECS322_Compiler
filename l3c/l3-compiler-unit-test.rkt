@@ -175,7 +175,8 @@
                (movei (loadi (regst 'rsp) -24) (varia 'h))
                (calli (label ':func) 8)
                (label ':return_label_12)
-               (movei (regst 'rax) (regst 'rax))))
+               (movei (regst 'rax) (regst 'rax))
+               (retun)))
 
 (check-equal? (l3-compile-def (l3-parsd '(:func a b c d e f g h)) (l3varia 'x) #f)
               (list
@@ -235,4 +236,3 @@
                      (retun))))
 |#
 (format-func (l3-compile-func (l3-parsf '(:func (a b c d e f g h) (+ a b)))))
-(format-func (l3-compile-prog-entry (l3-parse '(:main 1 2 3 4 5)) ':__MAIN__))

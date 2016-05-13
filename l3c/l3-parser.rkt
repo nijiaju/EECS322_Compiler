@@ -67,3 +67,78 @@
 
 (define (label-suffix lab)
   (string->symbol (string-append (symbol->string lab) (l3-get-label-suffix))))
+
+(define (l3-preprocesser p)
+  (l3prog (l3-exp-preprocessor (l3prog-l3entry p) (hash))
+          (map (λ (f) (l3-func-preprocessor f)) (l3prog-l3funcl p))))
+
+(define/contract (l3-func-preprocessor f)
+  (-> l3func? l3func?)
+  (define l3context (l3-context-init (l3func-l3fvarl f) (hash)))
+  (l3func (l3func-l3fname f)
+          (map (λ (v) (unwrap-var (l3-val-preprocessor (l3varia v) l3context))) (l3func-l3fvarl f))
+          (l3func-l3nargs f)
+          (l3-exp-preprocessor (l3func-l3fbody f) l3context)))
+
+(define/contract (l3-exp-preprocessor e c)
+  (-> L3Expression? hash? L3Expression?)
+  (type-case L3Expression e
+    [l3lete (var def exp)
+            (let ([c2 (hash-set c (unwrap-var var) (label-suffix 'v_))])
+              (l3lete (l3varia (hash-ref c2 (unwrap-var var)))
+                      (l3-def-preprocessor def c)
+                      (l3-exp-preprocessor exp c2)))]
+    [l3ife  (cond then else)
+            (l3ife (if (l3varia? cond) (l3varia (hash-ref c (unwrap-var cond))) cond)
+                   (l3-exp-preprocessor then c)
+                   (l3-exp-preprocessor else c))]
+    [l3defe (d) (l3defe (l3-def-preprocessor d c))]))
+
+(define/contract (l3-def-preprocessor d c)
+  (-> L3Definition? hash? L3Definition?)
+  (type-case L3Definition d
+    [l3biop (oper lhs rhs)
+            (l3biop oper
+                    (l3-val-preprocessor lhs c)
+                    (l3-val-preprocessor rhs c))]
+    [l3pred (oper valu)
+            (l3pred oper (l3-val-preprocessor valu c))]
+    [l3funcal (name argl)
+              (l3funcal (l3-val-preprocessor name c)
+                        (map (λ (v) (l3-val-preprocessor v c)) argl))]
+    [l3newarr (size valu)
+              (l3newarr (l3-val-preprocessor size c)
+                        (l3-val-preprocessor valu c))]
+    [l3newtup (vall) (l3newtup (map (λ (v) (l3-val-preprocessor v c)) vall))]
+    [l3arrref (array posi)
+              (l3arrref (l3-val-preprocessor array c)
+                        (l3-val-preprocessor posi c))]
+    [l3arrset (array posi valu)
+              (l3arrset (l3-val-preprocessor array c)
+                        (l3-val-preprocessor posi c)
+                        (l3-val-preprocessor valu c))]
+    [l3arrlen (array) (l3arrlen (l3-val-preprocessor array c))]
+    [l3printd (valu) (l3printd (l3-val-preprocessor valu c))]
+    [l3makecl (name vars)
+              (l3makecl name (l3-val-preprocessor vars c))]
+    [l3clproc (clos) (l3clproc (l3-val-preprocessor clos c))]
+    [l3clvars (vars) (l3clvars (l3-val-preprocessor vars c))]
+    [l3value (value) (l3value (l3-val-preprocessor value c))]))
+
+(define/contract (l3-val-preprocessor v c)
+  (-> L3Value? hash? L3Value?)
+  (type-case L3Value v
+    [l3varia (var) (l3varia (hash-ref c var))]
+    [else v]))
+
+(define/contract (l3-context-init argl h)
+  (-> (listof is-variable?) hash? hash?)
+  (cond
+    [(empty? argl) h]
+    [else (hash-set (l3-context-init (rest argl) h) (first argl) (label-suffix 'v_))]))
+
+(define/contract (unwrap-var v)
+  (-> L3Value? is-variable?)
+  (type-case L3Value v
+    [l3varia (var) var]
+    [else (error 'unwrap-var)]))

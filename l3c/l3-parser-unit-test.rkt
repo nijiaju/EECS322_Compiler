@@ -13,4 +13,17 @@
 (check-equal? (l3-parsd '(< x 5)) (l3biop (less) (l3varia 'x) (l3numbe 11)))
 ;(check-equal? (l3-parsf '(:func1 (x y z) (+ x y)))
 ;              (l3func ':func1 (list 'x 'y 'z) 3 (l3defe (l3biop (addop) (l3varia 'x6) (l3varia 'y7)))))
-(l3-parse '(let ([x 1]) (+ x 1)))
+(check-equal? (l3-parse '(let ([x 1]) (+ x 1)))
+              (l3lete
+               (l3varia 'x)
+               (l3value (l3numbe 3))
+               (l3defe (l3biop (addop) (l3varia 'x) (l3numbe 3)))))
+
+(check-equal? (l3prog-l3entry (l3-preprocesser (l3-parsp '((let ([x 1]) (let ([x 2]) (+ x 3)))))))
+              (l3lete
+               (l3varia 'v_0)
+               (l3value (l3numbe 3))
+               (l3lete
+                (l3varia 'v_1)
+                (l3value (l3numbe 5))
+                (l3defe (l3biop (addop) (l3varia 'v_1) (l3numbe 7))))))

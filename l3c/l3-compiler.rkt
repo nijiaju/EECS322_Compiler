@@ -5,27 +5,10 @@
 (define/contract (l3-compile-prog p)
   (-> l3prog? prog?)
   (define entry_func (label-suffix ':__MAIN__))
+  (define p2 (l3-preprocesser p))
   (prog entry_func
-        (cons (l3-compile-prog-entry (l3prog-l3entry p) entry_func)
-              (map l3-compile-func (l3prog-l3funcl p)))))
-
-(define/contract (l3-compile-prog-entry e entry_func)
-  (-> L3Expression? symbol? func?)
-  (type-case L3Expression e
-    [l3defe (d)
-            (type-case L3Definition d
-              [l3funcal (name argl)
-                        (let ([narg (length argl)])
-                          (func entry_func 0 0
-                                ;(append (l3-compile-def-call-gen-arg
-                                ;         (map l3-value-l2 argl) 0)
-                                ;        (if (< narg 7)
-                                ;            (list (tcall (l3-value-l2 name) narg))
-                                ;            (list (calli (l3-value-l2 name) narg)
-                                ;                  (retun))))))]
-                                (l3-compile-exp e)))]
-              [else (func entry_func 0 0 (l3-compile-exp e))])]
-    [else (func entry_func 0 0 (l3-compile-exp e))]))
+        (cons (func entry_func 0 0 (l3-compile-exp (l3prog-l3entry p2)))
+              (map l3-compile-func (l3prog-l3funcl p2)))))
 
 (define/contract (l3-compile-func f)
   (-> l3func? func?)
