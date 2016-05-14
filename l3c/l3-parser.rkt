@@ -26,8 +26,8 @@
     [`(< ,e1 ,e2)   (l3biop (less) (l3-parsv e1) (l3-parsv e2))]
     [`(<= ,e1 ,e2)  (l3biop (leeq) (l3-parsv e1) (l3-parsv e2))]
     [`(= ,e1 ,e2)   (l3biop (eqal) (l3-parsv e1) (l3-parsv e2))]
-    [`(number? ,e1) (l3pred (l3isnumber) (l3-parsv e1))]
-    [`(a? ,e1)      (l3pred (l3isarray)  (l3-parsv e1))]
+    [`(number? ,e1) (l3pred (numpred) (l3-parsv e1))]
+    [`(a? ,e1)      (l3pred (arrpred)  (l3-parsv e1))]
     [`(new-array ,e1 ,e2)    (l3newarr (l3-parsv e1) (l3-parsv e2))]
     [`(new-tuple ,e1 ...)    (l3newtup (map l3-parsv e1))]
     [`(aref ,e1 ,e2)         (l3arrref (l3-parsv e1) (l3-parsv e2))]
@@ -50,23 +50,35 @@
 
 (define (encode n) (+ (* n 2) 1))
 
-(define var-counter (box 0))
+(define l3-var-counter (box 0))
+(define l4-var-counter (box 0))
 
-(define (l3-get-var-suffix)
-  (begin0 (number->string (unbox var-counter))
-          (set-box! var-counter (+ (unbox var-counter) 1))))
+(define (get-var-suffix lang)
+  (let
+      ([counter (match lang
+                  ['L3 l3-var-counter]
+                  ['L4 l4-var-counter]
+                  [_ (error 'get-label-suffix)])])
+    (begin0 (number->string (unbox counter))
+            (set-box! counter (+ (unbox counter) 1)))))
 
-(define (var-suffix var)
-  (string->symbol (string-append (symbol->string var) (l3-get-var-suffix))))
+(define (var-suffix var lang)
+  (string->symbol (string-append (symbol->string var) (get-var-suffix lang))))
 
-(define lab-counter (box 0))
+(define l3-lab-counter (box 0))
+(define l4-lab-counter (box 0))
 
-(define (l3-get-label-suffix)
-  (begin0 (number->string (unbox lab-counter))
-          (set-box! lab-counter (+ (unbox lab-counter) 1))))
+(define (get-label-suffix lang)
+  (let
+      ([counter (match lang
+                  ['L3 l3-lab-counter]
+                  ['L4 l4-lab-counter]
+                  [_ (error 'get-label-suffix)])])
+    (begin0 (number->string (unbox counter))
+            (set-box! counter (+ (unbox counter) 1)))))
 
-(define (label-suffix lab)
-  (string->symbol (string-append (symbol->string lab) (l3-get-label-suffix))))
+(define (label-suffix lab lang)
+  (string->symbol (string-append (symbol->string lab) (get-label-suffix lang))))
 
 (define (l3-preprocesser p)
   (l3prog (l3-exp-preprocessor (l3prog-l3entry p) (hash))
@@ -84,7 +96,7 @@
   (-> L3Expression? hash? L3Expression?)
   (type-case L3Expression e
     [l3lete (var def exp)
-            (let ([c2 (hash-set c (unwrap-var var) (label-suffix 'v_))])
+            (let ([c2 (hash-set c (unwrap-var var) (label-suffix 'l3_x_ 'L3))])
               (l3lete (l3varia (hash-ref c2 (unwrap-var var)))
                       (l3-def-preprocessor def c)
                       (l3-exp-preprocessor exp c2)))]
@@ -135,7 +147,7 @@
   (-> (listof is-variable?) hash? hash?)
   (cond
     [(empty? argl) h]
-    [else (hash-set (l3-context-init (rest argl) h) (first argl) (label-suffix 'v_))]))
+    [else (hash-set (l3-context-init (rest argl) h) (first argl) (label-suffix 'l3_x_ 'L3))]))
 
 (define/contract (unwrap-var v)
   (-> L3Value? is-variable?)

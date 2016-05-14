@@ -4,7 +4,7 @@
 
 (define/contract (l3-compile-prog p)
   (-> l3prog? prog?)
-  (define entry_func (label-suffix ':__MAIN__))
+  (define entry_func (label-suffix ':__MAIN__ 'L3))
   (define p2 (l3-preprocesser p))
   (prog entry_func
         (cons (func entry_func 0 0 (l3-compile-exp (l3prog-l3entry p2)))
@@ -25,8 +25,8 @@
             (append (l3-compile-def defi vari #f)
                     (l3-compile-exp expr))]
     [l3ife  (cond then else)
-            (let ([then-label (label (label-suffix ':then_label_))]
-                  [else-label (label (label-suffix ':else_label_))])
+            (let ([then-label (label (label-suffix ':then_label_ 'L3))]
+                  [else-label (label (label-suffix ':else_label_ 'L3))])
               (append (list (cjmpi (eqal) (l3-value-l2 cond) (numbr 1)
                                    else-label then-label)
                             then-label)
@@ -113,7 +113,7 @@
       (or/c numbr? label? varia?) (or/c numbr? label? varia?)
       boolean?
       (listof Inst?))
-  (define temp (varia (var-suffix '__tmp__)))
+  (define temp (varia (var-suffix '__tmp__ 'L3)))
   (append
    (list (movei dest lhs)
          (sfopi (sfrht) dest (numbr 1))
@@ -142,9 +142,9 @@
   (append
    (list (movei dest valu)
          (aropi (andop) dest (numbr 1))
-         (if (l3isnumber? oper)
+         (if (numpred? oper)
              (aropi (mulop) dest (numbr 2)) (aropi (mulop) dest (numbr -2)))
-         (if (l3isnumber? oper)
+         (if (numpred? oper)
              (aropi (addop) dest (numbr 1)) (aropi (addop) dest (numbr 3))))
    (if tail (list (retun)) empty)))
 
@@ -174,7 +174,7 @@
       (or/c label? varia?)
       (listof (or/c numbr? varia? label?))
       (listof Inst?))
-  (define return-label (label (label-suffix ':return_label_)))
+  (define return-label (label (label-suffix ':return_label_ 'L3)))
   (append
    (list (movei (loadi (regst 'rsp) -8) return-label))
    (l3-compile-def-call-gen-arg argl 0)
@@ -230,11 +230,11 @@
   (-> (or/c numbr? regst? label? varia?) (listof (or/c numbr? varia? label?))
       boolean?
       (listof Inst?))
-  (define n (varia (var-suffix '__tmp__)))
-  (define temp (varia (var-suffix '__tmp__)))
-  (define loop (label (label-suffix ':loop_)))
-  (define exit-loop (label (label-suffix ':exit_loop_)))
-  (define cont-loop (label (label-suffix ':cont_loop_)))
+  (define n (varia (var-suffix '__tmp__ 'L3)))
+  (define temp (varia (var-suffix '__tmp__ 'L3)))
+  (define loop (label (label-suffix ':loop_ 'L3)))
+  (define exit-loop (label (label-suffix ':exit_loop_ 'L3)))
+  (define cont-loop (label (label-suffix ':cont_loop_ 'L3)))
   (append
    (list (movei (regst 'rdi) (numbr (encode (length valuel))))
          (movei (regst 'rsi) (numbr 1))
@@ -255,9 +255,9 @@
   (-> (or/c numbr? regst? label? varia?) (or/c numbr? varia?) (or/c numbr? varia?)
       boolean?
       (listof Inst?))
-  (define temp (varia (var-suffix '__tmp__)))
-  (define bounds-pass (label (label-suffix ':bounds_pass_)))
-  (define bounds-fail (label (label-suffix ':bounds_fail_)))
+  (define temp (varia (var-suffix '__tmp__ 'L3)))
+  (define bounds-pass (label (label-suffix ':bounds_pass_ 'L3)))
+  (define bounds-fail (label (label-suffix ':bounds_fail_ 'L3)))
   (append
    (list (movei dest posi)
          (sfopi (sfrht) dest (numbr 1)) ;decode position
@@ -280,9 +280,9 @@
       (or/c numbr? varia?)
       boolean?
       (listof Inst?))
-  (define temp (varia (var-suffix '__tmp__)))
-  (define bounds-pass (label (label-suffix ':bounds_pass_)))
-  (define bounds-fail (label (label-suffix ':bounds_fail_)))
+  (define temp (varia (var-suffix '__tmp__ 'L3)))
+  (define bounds-pass (label (label-suffix ':bounds_pass_ 'L3)))
+  (define bounds-fail (label (label-suffix ':bounds_fail_ 'L3)))
   (append
    (list (movei dest posi)
          (sfopi (sfrht) dest (numbr 1)) ;decode position

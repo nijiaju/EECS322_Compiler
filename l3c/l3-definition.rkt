@@ -3,8 +3,8 @@
 (require "../l2c/l2-definition.rkt")
 
 (define-type Pred
-  [l3isnumber]
-  [l3isarray])
+  [numpred]
+  [arrpred])
 
 (define-type L3Value
   [l3varia  (var is-variable?)]
