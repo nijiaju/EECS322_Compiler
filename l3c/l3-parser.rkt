@@ -96,7 +96,7 @@
   (-> L3Expression? hash? L3Expression?)
   (type-case L3Expression e
     [l3lete (var def exp)
-            (let ([c2 (hash-set c (unwrap-var var) (label-suffix 'l3_x_ 'L3))])
+            (let ([c2 (hash-set c (unwrap-var var) (var-suffix 'l3_x_ 'L3))])
               (l3lete (l3varia (hash-ref c2 (unwrap-var var)))
                       (l3-def-preprocessor def c)
                       (l3-exp-preprocessor exp c2)))]
