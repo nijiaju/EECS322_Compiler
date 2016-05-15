@@ -50,3 +50,9 @@
 (define-struct/contract l3prog
   ([l3entry L3Expression?]
    [l3funcl (listof l3func?)]))
+
+(define/contract (unwrap-l3value d)
+  (-> L3Definition? L3Value?)
+  (type-case L3Definition d
+    [l3value (valu) valu]
+    [else (error 'unwrap-l3value)]))
