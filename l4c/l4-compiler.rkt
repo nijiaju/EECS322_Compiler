@@ -89,7 +89,7 @@
     [l4nasctxt (valu k)
                (l4-maybe-lift d (λ (v) (l4-find valu (l4navctxt v k))))]
     [l4navctxt (size k)
-               (l4-maybe-lift d (λ (v) (l4-fill (l3newarr size v))))]
+               (l4-maybe-lift d (λ (v) (l4-fill (l3newarr size v) k)))]
     [l4ntpctxt (done left k)
                (if (empty? left)
                    (l4-maybe-lift d (λ (v) (l4-fill (l3newtup (reverse (cons v done))) k)))

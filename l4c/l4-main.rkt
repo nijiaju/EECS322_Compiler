@@ -11,5 +11,5 @@
 ;========== MAIN ==========
 ;(define in (open-input-file "test"))
 (define in (open-input-file file-to-compile))
-(define l4prog (l4-parsp (read in)))
+(define l4prog (l4-rename-vars (l4-parsp (read in))))
 (displayln (format-l3-prog (l4-compile-prog l4prog)))

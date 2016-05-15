@@ -104,4 +104,6 @@
                               (new-tuple
                                (let [(passed (aref results 0))]
                                  (if is_pass (+ 1 passed) passed))
-                               (+ 1 (aref results 1)))))))))
+                               (+ 1 (aref results 1))))
+                     (:func (a b)
+                            (a b c d e)))))))

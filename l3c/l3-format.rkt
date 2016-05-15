@@ -18,7 +18,7 @@
     [l3biop (oper lhs rhs)
             (format "(~a ~a ~a)"
             (cond
-              [(Aop? oper) (format-arop oper)]
+              [(Aop? oper) (l3-format-arop oper)]
               [(Cmp? oper) (format-comp oper)])
             (format-l3-value lhs)
             (format-l3-value rhs))]
@@ -73,3 +73,10 @@
 (define (format-l3-prog p)
   (format "~a" (cons (format-l3-exp (l3prog-l3entry p))
                      (map format-l3-func (l3prog-l3funcl p)))))
+
+(define (l3-format-arop arop)
+  (type-case Aop arop
+    [addop () "+"]
+    [subop () "-"]
+    [mulop () "*"]
+    [andop () "&"]))
