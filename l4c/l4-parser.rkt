@@ -39,7 +39,6 @@
     [(? number?)      (l4value (l4num sexp))]
     [(? is-label?)    (l4value (l4lab sexp))]
     [(? is-variable?) (l4value (l4var sexp))]))
-    
 
 (define (l4-parsv sexp)
   (match sexp
@@ -47,3 +46,87 @@
     [(? is-label?)    (l4lab sexp)]
     [(? is-variable?) (l4var sexp)]
     [_ (error 'l4-parsv "syntax error")]))
+
+(define/contract (l4-rename-vars p)
+  (-> l4prog? l4prog?)
+  (l4prog (l4-rename-vars-exp (l4prog-l4entry p) (hash))
+          (map l4-rename-vars-func (l4prog-l4funcl p))))
+
+(define/contract (l4-rename-vars-func f)
+  (-> l4func? l4func?)
+  (define v/c (init-context (l4func-l4fvarl f) (hash)))
+  (l4func (l4func-l4fname f)
+          (car v/c)
+          (l4-rename-vars-exp (l4func-l4fbody f) (cdr v/c))))
+
+(define/contract (l4-rename-vars-exp e c)
+  (-> L4Expression? hash? L4Expression?)
+  (type-case L4Expression e
+    [l4let    (vari valu body)
+              (let ([c2 (hash-set c (l4-unwrap-var vari) (var-suffix 'l4_x_ 'L4))])
+               (l4let (l4var (hash-ref c2 (l4-unwrap-var vari)))
+                      (l4-rename-vars-exp valu c)
+                      (l4-rename-vars-exp body c2)))]
+    [l4if     (cond then else)
+              (l4if (l4-rename-vars-exp cond c)
+                   (l4-rename-vars-exp then c)
+                   (l4-rename-vars-exp else c))]
+    [l4biop   (oper lhs rhs)
+              (l4biop oper
+                     (l4-rename-vars-exp lhs c)
+                     (l4-rename-vars-exp rhs c))]
+    [l4pred   (oper valu)
+              (l4pred oper (l4-rename-vars-exp valu c))]
+    [l4funcal (name argl)
+              (l4funcal (l4-rename-vars-exp name c)
+                        (map (λ (x) (l4-rename-vars-exp x c)) argl))]
+    [l4newarr (size valu)
+              (l4newarr (l4-rename-vars-exp size c)
+                        (l4-rename-vars-exp valu c))]
+    [l4newtup (vall)
+              (l4newtup (map (λ (x) (l4-rename-vars-exp x c)) vall))]
+    [l4arrref (aray posi)
+              (l4arrref (l4-rename-vars-exp aray c)
+                        (l4-rename-vars-exp posi c))]
+    [l4arrset (aray posi valu)
+              (l4arrset (l4-rename-vars-exp aray c)
+                        (l4-rename-vars-exp posi c)
+                        (l4-rename-vars-exp valu c))]
+    [l4arrlen (aray)
+              (l4arrlen (l4-rename-vars-exp aray c))]
+    [l4begin  (lhs rhs)
+              (l4begin  (l4-rename-vars-exp lhs  c)
+                        (l4-rename-vars-exp rhs  c))]
+    [l4print  (valu)
+              (l4print (l4-rename-vars-exp valu c))]
+    [l4makecl (name vars)
+              (l4makecl name (l4-rename-vars-exp vars c))]
+    [l4clproc (clos)
+              (l4clproc (l4-rename-vars-exp clos c))]
+    [l4clvars (clos)
+              (l4clvars (l4-rename-vars-exp clos c))]
+    [l4value  (valu)
+              (l4value  (l4-rename-variable valu c))]))
+                        
+               
+
+(define/contract (l4-rename-variable v c)
+  (-> L4Value? hash? L4Value?)
+  (type-case L4Value v
+    [l4var (var) (l4var (hash-ref c var))]
+    [else v]))
+
+(define/contract (init-context argl h)
+  (-> (listof is-variable?) hash? pair?)
+  (cond
+    [(empty? argl) (cons empty h)]
+    [else (let ([new-var (var-suffix 'l4_x_ 'L4)]
+                [res (init-context (rest argl) h)])
+            (cons (cons new-var (car res))
+                  (hash-set (cdr res) (first argl) new-var)))]))
+
+(define/contract (l4-unwrap-var v)
+  (-> L4Value? is-variable?)
+  (type-case L4Value v
+    [l4var (var) var]
+    [else (error 'l4-unwrap-var)]))

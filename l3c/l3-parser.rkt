@@ -82,7 +82,7 @@
 
 (define (l3-preprocesser p)
   (l3prog (l3-exp-preprocessor (l3prog-l3entry p) (hash))
-          (map (λ (f) (l3-func-preprocessor f)) (l3prog-l3funcl p))))
+          (map l3-func-preprocessor (l3prog-l3funcl p))))
 
 (define/contract (l3-func-preprocessor f)
   (-> l3func? l3func?)
@@ -147,7 +147,7 @@
   (-> (listof is-variable?) hash? hash?)
   (cond
     [(empty? argl) h]
-    [else (hash-set (l3-context-init (rest argl) h) (first argl) (label-suffix 'l3_x_ 'L3))]))
+    [else (hash-set (l3-context-init (rest argl) h) (first argl) (var-suffix 'l3_x_ 'L3))]))
 
 (define/contract (unwrap-var v)
   (-> L3Value? is-variable?)
