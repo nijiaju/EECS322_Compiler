@@ -1,0 +1,5 @@
+#!/bin/bash
+
+export PATH=/home/software/racket-6.4/bin/:$PATH
+racket l4-main.rkt "$@"
+#./l4-main "$@"
