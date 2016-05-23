@@ -9,7 +9,7 @@
    filename))
 
 ;========== MAIN ==========
-;(define in (open-input-file "test"))
+;(define in (open-input-file "../interps/tests/12/4-test/if-2.L4"))
 (define in (open-input-file file-to-compile))
 (define l4prog (l4-rename-vars (l4-parsp (read in))))
 (displayln (format-l3-prog (l4-compile-prog l4prog)))

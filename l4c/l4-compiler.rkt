@@ -35,7 +35,9 @@
     [l4newarr (size valu)
               (l4-find size (l4nasctxt valu k))]
     [l4newtup (vall)
-              (l4-find (first vall) (l4ntpctxt empty (rest vall) k))]
+              (if (empty? vall)
+                  (l4-fill (l3newtup empty) k)
+                  (l4-find (first vall) (l4ntpctxt empty (rest vall) k)))]
     [l4arrref (aray posi)
               (l4-find aray (l4aractxt posi k))]
     [l4arrset (aray posi valu)
