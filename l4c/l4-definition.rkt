@@ -18,7 +18,7 @@
   [l4arrref (aray L4Expression?) (posi L4Expression?)]
   [l4arrset (aray L4Expression?) (posi L4Expression?) (valu L4Expression?)]
   [l4arrlen (aray L4Expression?)]
-;  [l4begin  (lhs  L4Expression?) (rhs  L4Expression?)]
+  [l4begin  (lhs  L4Expression?) (rhs  L4Expression?)]
   [l4print  (expr L4Expression?)]
   [l4makecl (name is-label?) (vars L4Expression?)]
   [l4clproc (clos L4Expression?)]

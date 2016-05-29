@@ -30,8 +30,9 @@
     [`(aref ,e1 ,e2)         (l4arrref (l4-parse e1) (l4-parse e2))]
     [`(aset ,e1 ,e2 ,e3)     (l4arrset (l4-parse e1) (l4-parse e2) (l4-parse e3))]
     [`(alen ,e1)             (l4arrlen (l4-parse e1))]
-    [`(begin ,e1 ,e2)        (l4let (l4var (var-suffix 'l4_x_ 'L4))
-                                    (l4-parse e1) (l4-parse e2))]
+    ;[`(begin ,e1 ,e2)        (l4let (l4var (var-suffix 'l4_x_ 'L4))
+    ;                                (l4-parse e1) (l4-parse e2))]
+    [`(begin ,e1 ,e2)        (l4begin  (l4-parse e1) (l4-parse e2))]
     [`(print ,e1)            (l4print  (l4-parse e1))]
     [`(make-closure ,e1 ,e2) (l4makecl e1 (l4-parse e2))]
     [`(closure-proc ,e1)     (l4clproc (l4-parse e1))]
@@ -95,9 +96,9 @@
                         (l4-rename-vars-exp valu c))]
     [l4arrlen (aray)
               (l4arrlen (l4-rename-vars-exp aray c))]
-;    [l4begin  (lhs rhs)
-;              (l4begin  (l4-rename-vars-exp lhs  c)
-;                        (l4-rename-vars-exp rhs  c))]
+    [l4begin  (lhs rhs)
+              (l4begin  (l4-rename-vars-exp lhs  c)
+                        (l4-rename-vars-exp rhs  c))]
     [l4print  (valu)
               (l4print (l4-rename-vars-exp valu c))]
     [l4makecl (name vars)

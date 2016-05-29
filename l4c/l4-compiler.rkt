@@ -44,6 +44,9 @@
               (l4-find aray (l4asactxt posi valu k))]
     [l4arrlen (aray)
               (l4-find aray (l4alnctxt k))]
+    [l4begin  (lhs rhs)
+              (l4-find
+               (l4let (l4var (var-suffix 'l4_x_ 'L4)) lhs rhs) k)]
     [l4print  (valu)
               (l4-find valu (l4prtctxt k))]
     [l4makecl (name vars)
