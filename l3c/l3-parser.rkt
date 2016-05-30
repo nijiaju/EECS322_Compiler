@@ -52,12 +52,14 @@
 
 (define l3-var-counter (box 0))
 (define l4-var-counter (box 0))
+(define l5-var-counter (box 0))
 
 (define (get-var-suffix lang)
   (let
       ([counter (match lang
                   ['L3 l3-var-counter]
                   ['L4 l4-var-counter]
+                  ['L5 l5-var-counter]
                   [_ (error 'get-label-suffix)])])
     (begin0 (number->string (unbox counter))
             (set-box! counter (+ (unbox counter) 1)))))
@@ -67,12 +69,14 @@
 
 (define l3-lab-counter (box 0))
 (define l4-lab-counter (box 0))
+(define l5-lab-counter (box 0))
 
 (define (get-label-suffix lang)
   (let
       ([counter (match lang
                   ['L3 l3-lab-counter]
                   ['L4 l4-lab-counter]
+                  ['L5 l5-lab-counter]
                   [_ (error 'get-label-suffix)])])
     (begin0 (number->string (unbox counter))
             (set-box! counter (+ (unbox counter) 1)))))
