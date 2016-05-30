@@ -11,7 +11,7 @@
 (define (format-l4-exp e)
   (type-case L4Expression e
     [l4let (vari valu body)
-           (format "(let ((~a ~a)) ~a"
+           (format "(let ((~a ~a)) ~a)"
                    (format-l4-value vari)
                    (format-l4-exp valu)
                    (format-l4-exp body))]
@@ -56,6 +56,8 @@
              (format "(begin ~a ~a)"
                      (format-l4-exp lhs)
                      (format-l4-exp rhs))]
+    [l4read ()
+            (format "(read)")]
     [l4print (expr)
              (format "(print ~a)"
                      (format-l4-exp expr))]

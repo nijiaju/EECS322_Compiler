@@ -20,7 +20,7 @@
   (match v
     [(? is-l5prim) #f]
     [(app symbol->string (regexp #rx"^[a-zA-Z_][a-zA-Z_0-9-]*$")) #t]
-    [_ (println "hello")]))
+    [_ (error 'l5parse "Unknow item ~a" v)]))
 
 (define (is-l5prim v)
   (match v
