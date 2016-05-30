@@ -33,6 +33,7 @@
     ;[`(begin ,e1 ,e2)        (l4let (l4var (var-suffix 'l4_x_ 'L4))
     ;                                (l4-parse e1) (l4-parse e2))]
     [`(begin ,e1 ,e2)        (l4begin  (l4-parse e1) (l4-parse e2))]
+    [`(read)                 (l4read)]
     [`(print ,e1)            (l4print  (l4-parse e1))]
     [`(make-closure ,e1 ,e2) (l4makecl e1 (l4-parse e2))]
     [`(closure-proc ,e1)     (l4clproc (l4-parse e1))]
@@ -99,6 +100,7 @@
     [l4begin  (lhs rhs)
               (l4begin  (l4-rename-vars-exp lhs  c)
                         (l4-rename-vars-exp rhs  c))]
+    [l4read   () e]
     [l4print  (valu)
               (l4print (l4-rename-vars-exp valu c))]
     [l4makecl (name vars)

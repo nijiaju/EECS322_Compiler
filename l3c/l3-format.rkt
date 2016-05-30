@@ -39,6 +39,8 @@
                       (format-l3-value valu))]
     [l3arrlen (aray)
               (format "(alen ~a)" (format-l3-value aray))]
+    [l3readd  ()
+              (format "(read)")]
     [l3printd (valu)
               (format "(print ~a)" (format-l3-value valu))]
     [l3makecl (name vars)

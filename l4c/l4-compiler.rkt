@@ -47,6 +47,8 @@
     [l4begin  (lhs rhs)
               (l4-find
                (l4let (l4var (var-suffix 'l4_x_ 'L4)) lhs rhs) k)]
+    [l4read   ()
+              (l4-fill (l3readd) k)]
     [l4print  (valu)
               (l4-find valu (l4prtctxt k))]
     [l4makecl (name vars)

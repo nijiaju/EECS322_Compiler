@@ -33,6 +33,7 @@
     [`(aref ,e1 ,e2)         (l3arrref (l3-parsv e1) (l3-parsv e2))]
     [`(aset ,e1 ,e2 ,e3)     (l3arrset (l3-parsv e1) (l3-parsv e2) (l3-parsv e3))]
     [`(alen ,e1)             (l3arrlen (l3-parsv e1))]
+    [`(read)                 (l3readd)]
     [`(print ,e1)            (l3printd (l3-parsv e1))]
     [`(make-closure ,e1 ,e2) (l3makecl e1 (l3-parsv e2))]
     [`(closure-proc ,e1)     (l3clproc (l3-parsv e1))]
@@ -134,6 +135,7 @@
                         (l3-val-preprocessor posi c)
                         (l3-val-preprocessor valu c))]
     [l3arrlen (array) (l3arrlen (l3-val-preprocessor array c))]
+    [l3readd  () d]
     [l3printd (valu) (l3printd (l3-val-preprocessor valu c))]
     [l3makecl (name vars)
               (l3makecl name (l3-val-preprocessor vars c))]

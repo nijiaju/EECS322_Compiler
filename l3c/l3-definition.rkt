@@ -30,6 +30,7 @@
   [l3arrref (aray L3Value?) (posi L3Value?)]
   [l3arrset (aray L3Value?) (posi L3Value?) (vale L3Value?)]
   [l3arrlen (aray L3Value?)]
+  [l3readd]
   [l3printd (valu L3Value?)]
   [l3makecl (name is-label?) (vars L3Value?)]
   [l3clproc (clos L3Value?)]
