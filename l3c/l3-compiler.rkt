@@ -73,6 +73,8 @@
                dest (l3-value-l2 array) (l3-value-l2 posi) (l3-value-l2 value) tail)]
     [l3arrlen (array)
               (l3-compile-def-alen dest (l3-value-l2 array) tail)]
+    [l3readd  ()
+              (l3-compile-def-read dest tail)]
     [l3printd (value)
               (l3-compile-def-print dest (l3-value-l2 value) tail)]
     [l3makecl (name vars)
@@ -307,6 +309,13 @@
    (list (movei dest (loadi array 0))
          (sfopi (sflft) dest (numbr 1))
          (aropi (addop) dest (numbr 1)))
+   (if tail (list (retun)) empty)))
+
+(define/contract (l3-compile-def-read dest tail)
+  (-> (or/c numbr? regst? label? varia?) boolean? (listof Inst?))
+  (append
+   (list (cread)
+         (movei dest (regst 'rax)))
    (if tail (list (retun)) empty)))
 
 (define/contract (l3-compile-def-print dest value tail)

@@ -57,6 +57,7 @@
     [gotoi (labl) (format "(goto ~a)\n" (format-ins labl))]
     [calli (dest narg) (format "(call ~a ~a)\n" (format-ins dest) narg)]
     [tcall (dest narg) (format "(tail-call ~a ~a)\n" (format-ins dest) narg)]
+    [cread () "(call read 0)\n"]
     [cprit () "(call print 1)\n"]
     [caloc () "(call allocate 2)\n"]
     [caerr () "(call array-error 2)\n"]

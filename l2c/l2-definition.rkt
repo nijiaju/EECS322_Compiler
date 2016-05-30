@@ -19,6 +19,7 @@
   [gotoi (labl Inst?)]
   [calli (dest Inst?) (narg number?)]
   [tcall (dest Inst?) (narg number?)]
+  [cread]
   [cprit]
   [caloc]
   [caerr]

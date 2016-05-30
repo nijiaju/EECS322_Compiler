@@ -66,6 +66,22 @@
     (movei-patch ins))
    (sfopi-patch ins)))
 
+(define/contract (interference2 ins in out 1st)
+  (-> Inst? set-mutable? set-mutable? boolean? set-mutable?)
+  (define res (mutable-set))
+  (set-union! res
+   ;appearing together in the first instruction's 'in' set
+   (if 1st
+       (list->mutable-set (generate-edges (set->list in)))
+       (mutable-set))
+   ;appearing together in an 'out' set & killed variable interfere with variables in the out set
+   (set-subtract
+    (list->mutable-set (generate-edges (set->list (set-union! out (killgen-kill (kill&gen ins))))))
+    (movei-patch ins))
+   ;hanled constrained arithmetic via extra edges
+   (sfopi-patch ins)))
+  
+
 (define/contract (vertex-patch ins)
   (-> Inst? (listof symbol?))
   (define kg (kill&gen ins))
@@ -83,11 +99,8 @@
         [i (in-range 1 (+ 1 (length insl)))]
         [out (inout-out io)]
         [in (inout-in io)])
-    (if (= i 1)
-        (for ([e (interference ins in out #t)])
+    (for ([e (interference ins in out (= i 1))])
           (add-edge! g (first e) (second e)))
-        (for ([e (interference ins in out #f)])
-          (add-edge! g (first e) (second e))))
     (for ([v (vertex-patch ins)])
       (add-vertex! g v)))
   g)
@@ -99,8 +112,14 @@
   (for ([v (in-vertices g)])
     (let ([n (length (get-neighbors g v))])
       (when (and (< n 15) (> n max))
-        (set! vertex v))))
+        (begin
+          (set! max n)
+          (set! vertex v)))))
   vertex)
+
+(define test-g (undirected-graph (list (list 'a 'b) (list 'b 'c))))
+(unless (equal? 'b (pick-vertex test-g))
+  (error 'ack!))
 
 (define/contract (coloring g)
   (-> graph? (or/c (listof pair?) boolean?))
@@ -136,7 +155,7 @@
   (-> set-mutable? symbol?)
   (cond
     [(set-member? regs 'r10) 'r10]
-    [(set-member? regs 'r11) 'r11]
+      
     [(set-member? regs 'r12) 'r12]
     [(set-member? regs 'r13) 'r13]
     [(set-member? regs 'r14) 'r14]
