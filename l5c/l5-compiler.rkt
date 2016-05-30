@@ -206,7 +206,7 @@
       (l5lambda (list (l5var 'x) (l5var 'y))
                 (l5call (l5prim prim) (list (l5var 'x) (l5var 'y))))
       funcs)]
-    [(or (? is-l5pred) 'read 'print 'alen)
+    [(or (? is-l5pred) 'print 'alen)
      (l5-compiler
       (l5lambda (list (l5var 'x)) (l5call (l5prim prim) (list (l5var 'x))))
       empty)]
@@ -214,6 +214,10 @@
      (l5-compiler
       (l5lambda (list (l5var 'x) (l5var 'y) (l5var 'z))
                 (l5call (l5prim prim) (list (l5var 'x) (l5var 'y) (l5var 'z))))
+      empty)]
+    ['read
+     (l5-compiler
+      (l5lambda empty (l5call (l5prim prim) empty))
       empty)]))
     
 (define/contract (find-free-vars bound-vars free-vars exp)
