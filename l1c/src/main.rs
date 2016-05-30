@@ -24,6 +24,7 @@ enum Instruction {
     Call { dst: String, arg: String },
     Tcal { dst: String, arg: String },
     Retn,
+    Read,
     Prit,
     Aloc,
     Arer,
@@ -189,12 +190,13 @@ fn main() {
     regexs.insert("TCAL",
     Regex::new(r"^\(\s*tail-call\s+(rdi|rsi|rdx|rcx|r8|r9|rax|rbx|rbp|r10|r11|r12|r13|r14|r15|rsp|:[a-zA-Z_][a-zA-Z_0-9]*)\s+[0-6]\s*\)$").unwrap());
     regexs.insert("RETN", Regex::new(r"^\(\s*return\s*\)$").unwrap());
+    regexs.insert("READ", Regex::new(r"^\(\s*call\s+read\s+0\s*\)$").unwrap());
     regexs.insert("PRIT", Regex::new(r"^\(\s*call\s+print\s+1\s*\)$").unwrap());
     regexs.insert("ALOC", Regex::new(r"^\(\s*call\s+allocate\s+2\s*\)$").unwrap());
     regexs.insert("ARER", Regex::new(r"^\(\s*call\s+array-error\s+2\s*\)$").unwrap());
 
     let preprocess_result = l1_preprocesser(&mut codes);
-    println!("{}", preprocess_result);
+    //println!("{}", preprocess_result);
     let mut codes = preprocess_result.chars();
     let parse_result = l1_parser(&mut codes, &regexs);
     if let Err(e) = parse_result {
@@ -260,7 +262,7 @@ fn l1_program_parser(codes: &mut Chars, regexs: &HashMap<&str, Regex>) -> Result
                         label.push(c);
                     }
                 }
-                println!("[l1_program_parser] Label: {}", label);
+                //println!("[l1_program_parser] Label: {}", label);
                 p.labl = label;
             }
             ProgExpect::Func => {
@@ -309,7 +311,7 @@ fn l1_function_parser(codes: &mut Chars, regexs: &HashMap<&str, Regex>) -> Resul
                         label.push(c);
                     }
                 }
-                println!("[l1_function_parser] Label: {}", label);
+                //println!("[l1_function_parser] Label: {}", label);
                 f.labl = label;
             }
             FuncExpect::NumArg | FuncExpect::NumSpl => {
@@ -333,7 +335,7 @@ fn l1_function_parser(codes: &mut Chars, regexs: &HashMap<&str, Regex>) -> Resul
                         return Err("[Syntax Error] Function: Numbers Are Expected".to_string());
                     }
                 }
-                println!("[l1_function_parser] Number: {}", number);
+                //println!("[l1_function_parser] Number: {}", number);
                 match status {
                     FuncExpect::NumArg => f.narg = number,
                     FuncExpect::NumSpl => f.nspl = number,
@@ -405,21 +407,21 @@ fn l1_function_parser(codes: &mut Chars, regexs: &HashMap<&str, Regex>) -> Resul
 fn l1_instruction_parser(ins: &str, regexs: &HashMap<&str, Regex>) -> Result<Instruction, String> {
     let result: Vec<&str> = ins.split_whitespace().collect();
     if regexs["MVMR"].is_match(ins) {
-        println!("find Mvmr instruction: {}", ins);
+        //println!("find Mvmr instruction: {}", ins);
         return Ok(Instruction::Mvmr{ dst: result[1].to_string(),
                                      src: result[5].to_string(),
                                      off: result[6].to_string() });
     } else if regexs["MVRM"].is_match(ins) {
-        println!("find Mvrm instruction: {}", ins);
+        //println!("find Mvrm instruction: {}", ins);
         return Ok(Instruction::Mvrm{ dst: result[3].to_string(),
                                      src: result[7].to_string(),
                                      off: result[4].to_string() });
     } else if regexs["MVRR"].is_match(ins) {
-        println!("find Mvrr instruction: {}", ins);
+        //println!("find Mvrr instruction: {}", ins);
         return Ok(Instruction::Mvrr{ dst: result[1].to_string(),
                                      src: result[3].to_string() });
     } else if regexs["AROP"].is_match(ins) {
-        println!("find Arop instruction: {}", ins);
+        //println!("find Arop instruction: {}", ins);
         let operation = match result[2] {
             "+=" => Arithmetic::Add,
             "-=" => Arithmetic::Sub,
@@ -431,7 +433,7 @@ fn l1_instruction_parser(ins: &str, regexs: &HashMap<&str, Regex>) -> Result<Ins
                                      src: result[3].to_string(),
                                      op:  operation });
     } else if regexs["SFOP"].is_match(ins) {
-        println!("find Sfop instruction: {}", ins);
+        //println!("find Sfop instruction: {}", ins);
         let operation = match result[2] {
             "<<=" => Shift::Left,
             ">>=" => Shift::Right,
@@ -441,7 +443,7 @@ fn l1_instruction_parser(ins: &str, regexs: &HashMap<&str, Regex>) -> Result<Ins
                                      src: result[3].to_string(),
                                      op:  operation });
     } else if regexs["COMP"].is_match(ins) {
-        println!("find Comp instruction: {}", ins);
+        //println!("find Comp instruction: {}", ins);
         let operation = match result[4] {
             "<"  => Compare::Less,
             "<=" => Compare::Leeq,
@@ -453,13 +455,13 @@ fn l1_instruction_parser(ins: &str, regexs: &HashMap<&str, Regex>) -> Result<Ins
                                      rhs: result[5].to_string(),
                                      op:  operation });
     } else if regexs["LABL"].is_match(ins) {
-        println!("find Label: {}", ins);
+        //println!("find Label: {}", ins);
         return Ok(Instruction::Labl{ lab: result[0].to_string() });
     } else if regexs["GOTO"].is_match(ins) {
-        println!("find Goto instruction: {}", ins);
+        //println!("find Goto instruction: {}", ins);
         return Ok(Instruction::Goto{ dst: result[2].to_string() });
     } else if regexs["CJMP"].is_match(ins) {
-        println!("find Cjmp instruction: {}", ins);
+        //println!("find Cjmp instruction: {}", ins);
         let operation = match result[3] {
             "<"  => Compare::Less,
             "<=" => Compare::Leeq,
@@ -472,24 +474,27 @@ fn l1_instruction_parser(ins: &str, regexs: &HashMap<&str, Regex>) -> Result<Ins
                                      tru: result[5].to_string(),
                                      fal: result[6].to_string() });
     } else if regexs["CALL"].is_match(ins) {
-        println!("find Call instruction: {}", ins);
+        //println!("find Call instruction: {}", ins);
         return Ok(Instruction::Call{ dst: result[2].to_string(),
                                      arg: result[3].to_string() });
     } else if regexs["TCAL"].is_match(ins) {
-        println!("find Tcal instruction: {}", ins);
+        //println!("find Tcal instruction: {}", ins);
         return Ok(Instruction::Tcal{ dst: result[2].to_string(),
                                      arg: result[3].to_string() });
     } else if regexs["RETN"].is_match(ins) {
-        println!("find Retn instruction: {}", ins);
+        //println!("find Retn instruction: {}", ins);
         return Ok(Instruction::Retn);
+    } else if regexs["READ"].is_match(ins) {
+        //println!("find Read instruction: {}", ins);
+        return Ok(Instruction::Read);
     } else if regexs["PRIT"].is_match(ins) {
-        println!("find Prit instruction: {}", ins);
+        //println!("find Prit instruction: {}", ins);
         return Ok(Instruction::Prit);
     } else if regexs["ALOC"].is_match(ins) {
-        println!("find Aloc instruction: {}", ins);
+        //println!("find Aloc instruction: {}", ins);
         return Ok(Instruction::Aloc);
     } else if regexs["ARER"].is_match(ins) {
-        println!("find Arer instruction: {}", ins);
+        //println!("find Arer instruction: {}", ins);
         return Ok(Instruction::Arer);
     } else {
         return Err(format!("[Syntax Error] Instruction: Format Error: {}", ins));
@@ -679,6 +684,8 @@ fn instruction_to_x86 (ins: Instruction, num_arg: u64, num_spl: u64) -> String {
             }
             return format!("addq ${}, %rsp\njmp {}\n", offset, format_lab(&dst))
         },
+        Instruction::Read =>
+            return format!("call read\n"),
         Instruction::Prit => 
             return format!("call print\n"),
         Instruction::Aloc =>
